@@ -4,6 +4,17 @@ version = "1.0.0"
 description = "Saathi - a multilingual GenAI companion for gig and informal workers"
 requires-python = ">=3.11"
 license = { text = "MIT" }
+dependencies = [
+    "fastapi==0.143.3",
+    "starlette==1.8.0",
+    "uvicorn==0.54.0",
+    "pydantic==2.14.1",
+    "pydantic-settings==2.16.0",
+    "google-genai==2.31.0",
+]
+
+[tool.vercel]
+entrypoint = "app.main:app"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,6 +1,6 @@
 """Application factory: middleware, routers, static files and /health.
 
-Run with ``uvicorn app.main:create_app --factory``.
+Run with ``uvicorn app.main:create_app --factory``. Vercel imports the module-level ``app``.
 """
 
 from __future__ import annotations
@@ -112,3 +112,8 @@ def create_app(settings: Settings | None = None, llm_client: LLMClient | None = 
     app.mount("/static", CachedStaticFiles(directory=STATIC_DIR), name="static")
     logger.info("startup env=%s ai_configured=%s model=%s", settings.env, settings.ai_configured, settings.gemini_model)
     return app
+
+
+# Module-level instance for platforms that import an ASGI app (Vercel). Settings come from the
+# environment; with ENV=production a missing GEMINI_API_KEY fails the import with a clear log.
+app = create_app()

@@ -1,0 +1,16 @@
+# Never upload secrets or local environments
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+
+# Not needed at runtime (static/, static/fonts/ and app/data/ ARE deployed)
+tests/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/

@@ -284,7 +284,7 @@ window.SaathiLedger = (() => {
   // ---------- Review (import and Ask Saathi "Edit"): nothing is saved until the worker taps Save ----------
 
   const REVIEW_KEY = "saathi.ledger.review"; // sessionStorage, so a refresh keeps the review
-  const MAX_FILE_BYTES = 5 * 1024 * 1024;
+  const MAX_FILE_BYTES = 4 * 1024 * 1024; // matches the server cap (Vercel limit)
   const FILE_TYPES = ["image/png", "image/jpeg", "image/webp", "application/pdf"];
 
   /** Show proposed rows for checking. rows: [{date, kind, amount, category, platform, note, low_confidence, needs_date}] */

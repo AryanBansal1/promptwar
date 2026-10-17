@@ -15,7 +15,7 @@ NITI Aayog estimated 77 lakh gig workers in India in 2020–21, projected to rea
 | Problem statement asks for… | Saathi feature | How it works |
 |---|---|---|
 | **Earnings tracking** | 💰 **Income & Expenses** | A ledger of individual income and expense entries, so a standalone "₹200 on petrol" is just one expense. Each entry has amount, category, optional platform, work type, hours and note. Stored in versioned `localStorage` (v1 data migrates automatically). `POST /api/ledger/summary` computes income, expenses, net, ₹/hour, today, weekly/monthly totals, per-platform and per-work-type breakdowns and best platform/day **in plain Python**. "Get AI advice" sends only the PII-free summary to Gemini. CSV export. |
-| | 📥 **Import from screenshot / PDF / SMS** | Upload a UPI or platform-earnings screenshot (PNG/JPG/WEBP) or a PDF statement (≤ 5 MB), or paste bank/UPI SMS text (≤ 5000 chars). Gemini returns structured rows; **each row is validated on its own** and bad rows are dropped with a visible note. The worker reviews, edits or unticks every row before anything is saved. Files stay in memory and are never stored. |
+| | 📥 **Import from screenshot / PDF / SMS** | Upload a UPI or platform-earnings screenshot (PNG/JPG/WEBP) or a PDF statement (≤ 4 MB), or paste bank/UPI SMS text (≤ 5000 chars). Gemini returns structured rows; **each row is validated on its own** and bad rows are dropped with a visible note. The worker reviews, edits or unticks every row before anything is saved. Files stay in memory and are never stored. |
 | | 🗣️ **Log by speaking or typing** | In Ask Saathi, "aaj Swiggy se 800 kamaye aur 200 ka petrol dala" becomes two proposed entries. Dates like *aaj/kal* are resolved **in code** from the worker's local date. A confirmation card saves everything with one tap of **Save** (never automatically), shows today's total and offers **Undo** for 10 seconds. |
 | **Multiple kinds of work** | 🧰 **My Work profile** | Multi-select work types (delivery, ride-hailing, bike taxi, home services, daily wage, domestic work, other) and platforms (Swiggy, Zomato, Uber, Ola, Rapido, Urban Company, Bharat Taxi, Porter, Blinkit, Zepto, other/contractor). Offered on first visit and skippable. Used across the app: your platforms list first, summaries break down by work type, scheme eligibility uses your work types, and safety chat / Ask Saathi get them as context (no PII). |
 | **Safety practices** | 🦺 **Safety Assistant** | Gemini chat on road safety, night shifts, heat, harassment, accidents and breakdowns, tailored to your kinds of work. A fixed emergency bar (112, 108, 1091, 181) is always visible as `tel:` links. These are hardcoded, and phone numbers are stripped from AI text. |
@@ -184,12 +184,45 @@ The container runs as a non-root user on `python:3.11-slim` and listens on `$POR
 
 ---
 
+## 5b. Deploy to Vercel (FastAPI preset)
+
+Vercel finds the module-level `app` in `app/main.py`; `pyproject.toml` also sets
+`[tool.vercel] entrypoint = "app.main:app"` and lists the same pinned dependencies as `requirements.txt`.
+
+```bash
+npm i -g vercel                     # Vercel CLI 48.1.8 or newer
+vercel link                         # link this folder to a Vercel project
+vercel env add GEMINI_API_KEY production      # paste the key when prompted (stored encrypted by Vercel)
+vercel env add ENV production                 # value: production
+vercel env add GEMINI_MODEL production        # value: gemini-3.6-flash
+vercel deploy --prod
+```
+
+Or import the GitHub repository in the Vercel dashboard (framework preset: **FastAPI**) and add the same three
+environment variables under *Settings → Environment Variables*.
+
+What the configuration does:
+
+- **Request bodies:** Vercel Functions reject bodies above ~4.5 MB, so every upload is capped at **4 MB** (imports)
+  or **2 MB** (voice) on both the client and the server. Tests enforce this.
+- **Duration:** `vercel.json` sets `maxDuration: 60` for `app/main.py`, which covers the longest Gemini call (45 s for
+  image/PDF import).
+- **Static files, fonts and data:** `static/` (including `static/fonts/`) is served by FastAPI's `StaticFiles` mount and
+  `app/data/*.json` is read at startup. Because the app has top-level middleware, Vercel keeps these mounts inside the
+  function, so security headers, gzip and cache headers still apply. `.vercelignore` excludes only secrets, the local
+  virtualenv, caches and tests.
+- **Fail-fast:** with `ENV=production` and no `GEMINI_API_KEY`, importing `app.main` raises a clear configuration error,
+  so a misconfigured deployment fails instead of serving a broken app.
+- **Limits:** each Vercel instance has its own in-memory rate limiter and cache, as on Cloud Run.
+
+---
+
 ## 6. Security, efficiency, accessibility & responsible AI
 
 ### Security
 - **Secrets** come only from env / Secret Manager (`SecretStr`, never logged). `.env*` is git- and docker-ignored.
 - **Strict Pydantic validation** (`extra="forbid"`): text length limits, amount ranges (> 0, ≤ ₹10 lakh per entry), enums for platform, work type, category, issue type, language and state, dates not in the future (India time), category consistent with income/expense.
-- **Uploads** are sent as raw request bodies (not multipart) so files never touch disk. Each upload's declared type must be on an allow-list **and match its magic bytes** (PNG/JPEG/WEBP/PDF; WebM/Ogg/WAV/MP4/MP3/AAC/FLAC). Per-path body caps are 5 MB for imports and 2 MB for audio; everything else stays at 1 MB. Empty → 422, wrong type → 415, too big → 413.
+- **Uploads** are sent as raw request bodies (not multipart) so files never touch disk. Each upload's declared type must be on an allow-list **and match its magic bytes** (PNG/JPEG/WEBP/PDF; WebM/Ogg/WAV/MP4/MP3/AAC/FLAC). Per-path body caps are 4 MB for imports and 2 MB for audio (both under Vercel's ~4.5 MB request limit); everything else stays at 1 MB. Empty → 422, wrong type → 415, too big → 413.
 - **Rate limiting** per IP on every Gemini endpoint (including import and transcription), returning a friendly, translated 429.
 - **Headers:** CSP `default-src 'self'` (no inline scripts or styles; fonts self-hosted), HSTS, `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, and `Permissions-Policy: microphone=(self)` with camera, geolocation, payment, USB and display capture denied. `MediaRecorder` needs no CSP changes: audio is uploaded with `fetch`, not via blob URLs.
 - **Prompt-injection defense:** user text is wrapped in `<user_input>` and treated as data. Gemini output is constrained by strict schemas, then validated item by item.

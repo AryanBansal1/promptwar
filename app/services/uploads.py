@@ -7,7 +7,9 @@ from dataclasses import dataclass
 
 from app.errors import AppError
 
-MAX_IMPORT_BYTES = 5 * 1024 * 1024
+# Vercel Functions reject request bodies above ~4.5 MB, so no upload may exceed 4 MiB.
+UPLOAD_CEILING_BYTES = 4 * 1024 * 1024
+MAX_IMPORT_BYTES = UPLOAD_CEILING_BYTES
 MAX_AUDIO_BYTES = 2 * 1024 * 1024
 
 
