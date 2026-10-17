@@ -24,7 +24,7 @@ def test_module_level_app_for_vercel_and_factory_still_work() -> None:
     assert isinstance(main.create_app(), FastAPI)  # uvicorn --factory and tests keep using the factory
 
 
-def test_pyproject_points_vercel_at_the_app_and_pins_the_same_dependencies() -> None:
+def test_pyproject_points_vercel_at_the_app_and_requirements_pin_everything() -> None:
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     assert pyproject["tool"]["vercel"]["entrypoint"] == "app.main:app"
     requirements = [
@@ -32,8 +32,8 @@ def test_pyproject_points_vercel_at_the_app_and_pins_the_same_dependencies() -> 
         for line in (ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.startswith("#")
     ]
-    assert pyproject["project"]["dependencies"] == requirements
-    assert all("==" in pin for pin in requirements)
+    assert all("==" in pin for pin in requirements)  # every package, including transitive ones, is pinned
+    assert set(pyproject["project"]["dependencies"]) <= set(requirements)  # direct deps pinned identically
 
 
 def test_every_upload_fits_under_the_vercel_body_limit() -> None:
