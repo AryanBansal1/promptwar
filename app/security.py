@@ -9,7 +9,8 @@ import time
 import unicodedata
 import uuid
 from collections import deque
-from dataclasses import dataclass
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field
 
 from fastapi import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -47,6 +48,48 @@ class BodyRule:
     raw: bool = False
 
 
+@dataclass
+class _Exchange:
+    """State for one request: a body-size-capped ``receive`` and a header-adding ``send``."""
+
+    receive: Receive
+    send: Send
+    rule: BodyRule
+    is_api: bool
+    request_id: str = field(default_factory=lambda: uuid.uuid4().hex[:16])
+    status: int = 500
+    response_started: bool = False
+    received: int = 0
+    too_large: bool = False
+
+    async def receive_capped(self) -> Message:
+        """Stop reading once the body passes the cap (also for streamed bodies without Content-Length)
+        and report a disconnect so the app stops; the middleware then answers 413 itself."""
+        if self.too_large:
+            return {"type": "http.disconnect"}
+        message = await self.receive()
+        if message["type"] == "http.request":
+            self.received += len(message.get("body", b""))
+            if self.received > self.rule.max_bytes:
+                self.too_large = True
+                return {"type": "http.disconnect"}
+        return message
+
+    async def send_with_headers(self, message: Message) -> None:
+        """Add security headers, the request id and, for API answers, ``Cache-Control: no-store``."""
+        if self.too_large:
+            return  # the app's response is replaced by the 413
+        if message["type"] == "http.response.start":
+            self.status, self.response_started = message["status"], True
+            headers = list(message.get("headers", []))
+            headers.extend(_ENCODED_HEADERS)
+            headers.append((b"x-request-id", self.request_id.encode()))
+            if self.is_api and not any(key == b"cache-control" for key, _ in headers):
+                headers.append(_NO_STORE)  # API answers are personal: never cache them
+            message["headers"] = headers
+        await self.send(message)
+
+
 class SecurityMiddleware:
     """Pure-ASGI middleware: request ids, safe access logs, security headers, body caps,
     content-type enforcement, and a last-resort error barrier.
@@ -64,64 +107,34 @@ class SecurityMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-
         path = scope.get("path", "")
-        rule = self.rules.get(path, self.default_rule)
-        request_id = uuid.uuid4().hex[:16]
-        scope.setdefault("state", {})["request_id"] = request_id
+        exchange = _Exchange(receive, send, self.rules.get(path, self.default_rule), path.startswith("/api/"))
+        scope.setdefault("state", {})["request_id"] = exchange.request_id
         started = time.perf_counter()
-        state = {"status": 500, "started": False}
-        is_api = path.startswith("/api/")
 
-        rejection = _reject_early(scope, rule)
+        rejection = _reject_early(scope, exchange.rule)
         if rejection is not None:
-            status, code, message = rejection
-            await _send_json(send, status, error_body(code, message))
-            self._log(scope, request_id, status, started)
-            return
+            exchange.status, code, message = rejection
+            await _send_json(send, exchange.status, error_body(code, message))
+        else:
+            await self._run(scope, exchange)
+        self._log(scope, exchange.request_id, exchange.status, started)
 
-        received = 0
-        too_large = False
-
-        async def limited_receive() -> Message:
-            # Streamed bodies without Content-Length: stop reading once over the cap and
-            # report a disconnect so the app stops; we answer 413 ourselves below.
-            nonlocal received, too_large
-            if too_large:
-                return {"type": "http.disconnect"}
-            message = await receive()
-            if message["type"] == "http.request":
-                received += len(message.get("body", b""))
-                if received > rule.max_bytes:
-                    too_large = True
-                    return {"type": "http.disconnect"}
-            return message
-
-        async def send_wrapper(message: Message) -> None:
-            if too_large:
-                return  # the app's response is replaced by the 413 below
-            if message["type"] == "http.response.start":
-                state["status"], state["started"] = message["status"], True
-                headers = list(message.get("headers", []))
-                headers.extend(_ENCODED_HEADERS)
-                headers.append((b"x-request-id", request_id.encode()))
-                if is_api and not any(k == b"cache-control" for k, _ in headers):
-                    headers.append(_NO_STORE)  # API answers are personal: never cache them
-                message["headers"] = headers
-            await send(message)
-
+    async def _run(self, scope: Scope, exchange: _Exchange) -> None:
+        """Call the app; replace its answer with 413 or a generic 500 when needed."""
         try:
-            await self.app(scope, limited_receive, send_wrapper)
+            await self.app(scope, exchange.receive_capped, exchange.send_with_headers)
         except Exception as exc:  # last-resort barrier: nothing internal may leak
-            if not too_large:
-                logger.error("unhandled_error request_id=%s type=%s", request_id, type(exc).__name__)
-                if not state["started"]:
-                    state["status"] = 500
-                    await _send_json(send, 500, error_body("internal_error", "Something went wrong on our side."))
-        if too_large:
-            state["status"] = 413
-            await _send_json(send, 413, error_body("payload_too_large", "Request is too large."))
-        self._log(scope, request_id, int(state["status"]), started)
+            if not exchange.too_large:
+                logger.error("unhandled_error request_id=%s type=%s", exchange.request_id, type(exc).__name__)
+                if not exchange.response_started:
+                    exchange.status = 500
+                    await _send_json(
+                        exchange.send, 500, error_body("internal_error", "Something went wrong on our side.")
+                    )
+        if exchange.too_large:
+            exchange.status = 413
+            await _send_json(exchange.send, 413, error_body("payload_too_large", "Request is too large."))
 
     @staticmethod
     def _log(scope: Scope, request_id: str, status: int, started: float) -> None:
@@ -139,9 +152,10 @@ class SecurityMiddleware:
 
 
 def _header(scope: Scope, name: bytes) -> str | None:
+    """First value of a request header (ASGI headers are lower-case latin-1 byte pairs)."""
     for key, value in scope.get("headers", []):
         if key == name:
-            return value.decode("latin-1")
+            return bytes(value).decode("latin-1")
     return None
 
 
@@ -226,17 +240,23 @@ class Limiters:
     api: RateLimiter
     ai_global: RateLimiter
 
-    def reset(self) -> None:
-        for limiter in (self.ai, self.api, self.ai_global):
-            limiter.reset()
+
+VERCEL_CLIENT_IP_HEADER = "x-vercel-forwarded-for"
 
 
 def client_ip(request: Request) -> str:
-    """The caller's IP. Behind a trusted proxy (Vercel) use the header the edge sets and
-    overwrites; otherwise the socket peer, so the header cannot be spoofed locally."""
-    if request.app.state.settings.trust_proxy_headers:
-        forwarded = request.headers.get("x-real-ip") or request.headers.get("x-forwarded-for", "")
-        first = forwarded.split(",", 1)[0].strip()
+    """The caller's IP address, used only as the rate-limit key.
+
+    Why this is safe:
+    - On Vercel (``VERCEL=1``, set by the platform) every request passes through Vercel's edge, which
+      writes the client's public IP into ``x-vercel-forwarded-for`` and replaces any value the client
+      sent. Vercel documents that this header, unlike ``x-forwarded-for``, is not overwritten by a
+      proxy placed in front of Vercel.
+    - Everywhere else (local, Docker, Cloud Run) no header is trusted at all: the IP is the direct
+      connection address, so a client cannot pick its own rate-limit key by sending headers.
+    """
+    if request.app.state.settings.vercel:
+        first = request.headers.get(VERCEL_CLIENT_IP_HEADER, "").split(",", 1)[0].strip()
         if first:
             return first[:64]
     return request.client.host if request.client else "unknown"
@@ -251,7 +271,7 @@ def _too_many(retry_after: float) -> AppError:
     )
 
 
-def ai_rate_limit(cost: int = 1):  # type: ignore[no-untyped-def]
+def ai_rate_limit(cost: int = 1) -> Callable[[Request], Awaitable[None]]:
     """Dependency factory for Gemini endpoints: per-client and per-instance budgets, weighted by cost."""
 
     async def dependency(request: Request) -> None:

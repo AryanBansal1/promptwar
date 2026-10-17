@@ -37,19 +37,13 @@ class Settings(BaseSettings):
     max_body_bytes: int = Field(default=1_000_000, ge=1024)
     allowed_origins: list[str] = Field(default_factory=list)
     log_level: str = "INFO"
-    # Vercel sets VERCEL=1. Its edge overwrites X-Forwarded-For / X-Real-IP, so they can be trusted there.
+    # Vercel sets VERCEL=1 at runtime; only then is Vercel's client-IP header trusted (see client_ip).
     vercel: bool = False
-    trust_proxy: bool = False
 
     @property
     def ai_configured(self) -> bool:
         """True when a non-empty Gemini API key is available."""
         return bool(self.gemini_api_key and self.gemini_api_key.get_secret_value().strip())
-
-    @property
-    def trust_proxy_headers(self) -> bool:
-        """Use proxy-supplied client IPs only behind a proxy that sets them (Vercel, or opted in)."""
-        return self.vercel or self.trust_proxy
 
 
 def validate_settings(settings: Settings) -> None:
