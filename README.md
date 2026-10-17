@@ -74,7 +74,7 @@ flowchart TB
 
   subgraph CloudRun["☁️ Cloud Run – FastAPI"]
     MW["SecurityMiddleware<br/>CSP/HSTS · Permissions-Policy mic=(self)<br/>per-path body caps · request-id logs · GZip"]
-    RL["Per-IP rate limiter (all AI endpoints)"]
+    RL["Cost-weighted rate limits<br/>per client · per instance · all /api"]
     R["Routers (thin)"]
     V["Upload validation<br/>MIME + magic bytes · size · in memory"]
     S["Services (pure logic)<br/>ledger maths · eligibility rules · date resolution<br/>row/item validation · escalation"]
@@ -213,7 +213,7 @@ What the configuration does:
   virtualenv, caches and tests.
 - **Fail-fast:** with `ENV=production` and no `GEMINI_API_KEY`, importing `app.main` raises a clear configuration error,
   so a misconfigured deployment fails instead of serving a broken app.
-- **Limits:** each Vercel instance has its own in-memory rate limiter and cache, as on Cloud Run.
+- **Limits:** rate limits and the AI cache live in each instance's memory; see [Rate limits and caches on serverless](#rate-limits-and-caches-on-serverless).
 
 ---
 
@@ -223,18 +223,45 @@ What the configuration does:
 - **Secrets** come only from env / Secret Manager (`SecretStr`, never logged). `.env*` is git- and docker-ignored.
 - **Strict Pydantic validation** (`extra="forbid"`): text length limits, amount ranges (> 0, ≤ ₹10 lakh per entry), enums for platform, work type, category, issue type, language and state, dates not in the future (India time), category consistent with income/expense.
 - **Uploads** are sent as raw request bodies (not multipart) so files never touch disk. Each upload's declared type must be on an allow-list **and match its magic bytes** (PNG/JPEG/WEBP/PDF; WebM/Ogg/WAV/MP4/MP3/AAC/FLAC). Per-path body caps are 4 MB for imports and 2 MB for audio (both under Vercel's ~4.5 MB request limit); everything else stays at 1 MB. Empty → 422, wrong type → 415, too big → 413.
-- **Rate limiting** per IP on every Gemini endpoint (including import and transcription), returning a friendly, translated 429.
-- **Headers:** CSP `default-src 'self'` (no inline scripts or styles; fonts self-hosted), HSTS, `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, and `Permissions-Policy: microphone=(self)` with camera, geolocation, payment, USB and display capture denied. `MediaRecorder` needs no CSP changes: audio is uploaded with `fetch`, not via blob URLs.
+- **Rate limiting** (translated 429 with `Retry-After`): a cost-weighted per-client AI budget (an image, PDF or audio call costs 3 units, a text call 1), a per-instance AI budget so many clients together cannot exhaust the Gemini quota, and a general per-client limit on every `/api` route. The client key is the connection address; only on Vercel (`VERCEL=1`) is Vercel's `x-vercel-forwarded-for` used, which Vercel's edge sets and overwrites, so headers cannot be spoofed to dodge limits.
+- **Early rejection:** a POST that is not `application/json` (except the two raw-upload endpoints) gets 415, and an oversized declared body gets 413, before any of the body is read. Upload endpoints check the type first, then read through a hard cap that also stops streamed bodies without `Content-Length`.
+- **No internal details leak:** a last-resort error barrier answers unexpected failures with a generic 500 and logs only the request id and exception type: no stack traces, file paths, messages or environment values. Configuration errors name the field, never its value. Logs record the route template, never the raw path (no log injection).
+- **AI output cleaning:** every Gemini answer is stripped of control and bidi characters and of links (only curated links are ever shown), phone numbers are removed from chat answers, and length is capped, before it reaches the browser.
+- **Headers:** CSP `default-src 'self'` with `frame-ancestors`, `frame-src` and `worker-src 'none'` (no inline scripts or styles, no `unsafe-*`; fonts self-hosted), HSTS, `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy`, `X-Permitted-Cross-Domain-Policies: none`, `Cache-Control: no-store` on API answers, and `Permissions-Policy: microphone=(self)` with camera, geolocation, payment, USB and display capture denied. `MediaRecorder` needs no CSP changes: audio is uploaded with `fetch`, not via blob URLs.
 - **Prompt-injection defense:** user text is wrapped in `<user_input>` and treated as data. Gemini output is constrained by strict schemas, then validated item by item.
 - **Privacy:** pasted SMS text has long digit runs (phone/account/UPI ref) masked before it is sent. Uploads, audio and transcripts are never stored or logged. Logs carry request id, route, status and latency only.
 - **XSS:** every user and AI string is rendered with `textContent`; a test asserts `innerHTML` is never used.
-- Dependencies are pinned; **`pip-audit` reports no known vulnerabilities**. API docs are off in production.
+- Every dependency, direct and transitive, is pinned to an exact version in `requirements.txt`; **`pip-audit` reports no known vulnerabilities**. API docs are off in production. See [SECURITY.md](SECURITY.md).
 
 ### Efficiency
-- Datasets and translations load once at startup; asset URLs carry a content hash (immutable caching) and responses are gzipped.
+- Datasets load once at startup; translations and the HTML shell are serialised once and served with ETags (a repeat visit revalidates with `304 Not Modified`). Asset URLs carry a content hash (cached for a year, `immutable`); text assets are gzipped once and kept in memory, and fonts are never re-compressed.
+- Cold starts skip the Gemini SDK: it is imported and its client created once, on the first AI call, then reused with pooled connections and an HTTP timeout.
+- The income summary is computed in a single pass; cached explanations use small tuple keys, not prompt hashes.
+- The language picker uses the system font, so a visit downloads only Latin plus the selected script's Noto font.
+- Draft saving is debounced, and an unchanged summary is not re-requested.
 - Gemini calls are async, with per-feature token caps and timeouts (45 s for images, 30 s for audio), thinking disabled, and a TTL/LRU cache for curated explanations.
 - Voice uses the **browser's own speech service first** (no cost or load on our server); Gemini is only the fallback.
-- Self-hosted Noto fonts use `unicode-range`, so a phone downloads only Latin plus the one script on screen. JS totals about 79 KB with no frameworks.
+- Self-hosted Noto fonts use `unicode-range`. JS totals about 80 KB with no frameworks.
+
+**Measured before/after the efficiency change** (`scored-97` tag vs. current; same offline script, Hindi visit):
+
+| Metric | Before | After |
+|---|---|---|
+| First-load total, wire bytes (HTML, CSS, JS, i18n gzipped + fonts) | 392,108 B | **200,449 B** (−49%) |
+| Fonts downloaded | 349,024 B (all 5 scripts) | 157,012 B (Latin + Devanagari) |
+| Repeat visit: HTML + translations | 10,868 B | **0 B** (304 Not Modified) |
+| `/api/i18n/hi` (gzipped) | 6,733 B | 6,733 B |
+| Income summary of 5,000 entries | 54.4 ms | 36.9 ms (−32%) |
+| Cold `import app.main` (serverless cold start) | 1,006 ms | 650 ms (−35%) |
+
+#### Rate limits and caches on serverless
+
+On Vercel (and Cloud Run) each instance has **its own memory**: the rate-limit counters and the AI explanation cache
+are per instance, are lost when an instance is recycled, and are only shared by requests that reach the same warm
+instance. The per-instance AI budget still caps how fast any one instance can spend the Gemini quota, but the overall
+limit grows with the number of instances. **Production fix:** move the counters and the cache to a shared store such as
+Redis (for example Upstash Redis on Vercel), using an atomic sliding-window or token-bucket counter keyed by client, so
+limits and cached answers hold across all instances.
 
 ### Accessibility
 - Semantic landmarks, a skip link, labels on every input, `fieldset`/`legend`, table captions, `aria-live` for AI answers, voice status and errors.
@@ -263,7 +290,7 @@ Saathi has **no** "Connect Google Pay", "Connect Uber/Rapido" or similar login, 
 
 ## 8. Known limitations
 
-- The rate limiter is per Cloud Run instance; a shared store would be needed at scale.
+- Rate limits and caches are per instance (see [Rate limits and caches on serverless](#rate-limits-and-caches-on-serverless)); a shared store such as Redis is the production fix.
 - Scheme rules are a simplified, curated subset (for example, PM-JAY's SECC lists are approximated by an income threshold). The UI always points to the official site.
 - Confirmed grievance emails exist for Swiggy, Zomato and Porter only. Uber, Ola, Rapido, Urban Company, Blinkit and Zepto addresses could not be confirmed on their own sites, and Bharat Taxi has no confirmed official website.
 - Web Speech API support for Punjabi, Tamil, Bengali and Marathi depends on the browser (Chrome supports them). Other browsers use the Gemini fallback.
