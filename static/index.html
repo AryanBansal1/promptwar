@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Saathi – a multilingual AI helper for gig and informal workers">
+  <meta name="theme-color" content="#F5A623">
+  <title>Saathi</title>
+  <link rel="icon" href="data:,">
+  <link rel="preload" href="/static/fonts/noto-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/styles.css?v=__ASSET_VERSION__">
+  <script src="/static/js/theme.js?v=__ASSET_VERSION__"></script>
+  <script src="/static/js/core.js?v=__ASSET_VERSION__" defer></script>
+  <script src="/static/js/voice.js?v=__ASSET_VERSION__" defer></script>
+  <script src="/static/js/ledger.js?v=__ASSET_VERSION__" defer></script>
+  <script src="/static/js/profile.js?v=__ASSET_VERSION__" defer></script>
+  <script src="/static/js/ask.js?v=__ASSET_VERSION__" defer></script>
+  <script src="/static/js/safety.js?v=__ASSET_VERSION__" defer></script>
+  <script src="/static/js/schemes.js?v=__ASSET_VERSION__" defer></script>
+  <script src="/static/js/documents.js?v=__ASSET_VERSION__" defer></script>
+  <script src="/static/js/grievance.js?v=__ASSET_VERSION__" defer></script>
+  <script src="/static/js/main.js?v=__ASSET_VERSION__" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main" data-i18n="app.skip">Skip to main content</a>
+
+  <header class="topbar">
+    <a class="brand" href="#/" aria-label="Saathi home">
+      <span class="brand-mark" aria-hidden="true">🤝</span>
+      <span>
+        <span class="brand-name" data-i18n="app.name">Saathi</span>
+        <span class="brand-tagline" data-i18n="app.tagline">Your helper at work</span>
+      </span>
+    </a>
+    <div class="top-actions">
+    <button type="button" id="theme-toggle" class="btn btn-small theme-toggle" aria-pressed="false">
+      <span class="to-dark"><span aria-hidden="true">🌙</span> <span data-i18n="theme.to_dark">Dark mode</span></span>
+      <span class="to-light"><span aria-hidden="true">☀️</span> <span data-i18n="theme.to_light">Light mode</span></span>
+    </button>
+    <div class="lang-picker">
+      <label for="lang-select"><span aria-hidden="true">🌐</span> <span data-i18n="app.language">Language</span></label>
+      <select id="lang-select">
+        <option value="en">English</option>
+        <option value="hi">हिन्दी</option>
+        <option value="pa">ਪੰਜਾਬੀ</option>
+        <option value="ta">தமிழ்</option>
+        <option value="bn">বাংলা</option>
+        <option value="mr">मराठी</option>
+      </select>
+    </div>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <div id="global-error" class="alert alert-error" role="alert" hidden></div>
+    <div id="prefill-note" class="alert alert-info" role="status" hidden data-i18n="app.prefilled"></div>
+
+    <!-- HOME -->
+    <section data-view="home" aria-labelledby="ask-title">
+      <section id="onboarding" class="card onboarding" aria-labelledby="onboarding-title" hidden>
+        <h2 id="onboarding-title"><span aria-hidden="true">👋</span> <span data-i18n="profile.onboard_title">Set up My Work</span></h2>
+        <p data-i18n="profile.onboard_text"></p>
+        <div class="row">
+          <a class="btn btn-primary" href="#/profile" id="onboarding-start"><span aria-hidden="true">🧰</span> <span data-i18n="profile.onboard_start">Set up now</span></a>
+          <button type="button" class="btn" id="onboarding-skip"><span data-i18n="profile.onboard_skip">Skip</span></button>
+        </div>
+      </section>
+
+      <form id="ask-form" class="card ask-card" novalidate>
+        <h1 id="ask-title"><span aria-hidden="true">💬</span> <span data-i18n="ask.title">Ask Saathi</span></h1>
+        <label for="ask-input" data-i18n="ask.label">Type your question or problem</label>
+        <textarea id="ask-input" name="message" rows="3" maxlength="1000" required data-i18n-placeholder="ask.placeholder" data-voice></textarea>
+        <button type="submit" class="btn btn-primary"><span aria-hidden="true">➤</span> <span data-i18n="ask.button">Ask</span></button>
+        <div id="ask-result" class="ai-box" aria-live="polite"></div>
+      </form>
+
+      <nav class="tiles" aria-label="Features">
+        <a class="tile" href="#/ledger"><span class="tile-icon" aria-hidden="true">💰</span><span class="tile-title" data-i18n="nav.ledger">Income &amp; Expenses</span><span class="tile-desc" data-i18n="nav.ledger_desc"></span></a>
+        <a class="tile" href="#/safety"><span class="tile-icon" aria-hidden="true">🦺</span><span class="tile-title" data-i18n="nav.safety">Safety</span><span class="tile-desc" data-i18n="nav.safety_desc"></span></a>
+        <a class="tile" href="#/schemes"><span class="tile-icon" aria-hidden="true">🏛️</span><span class="tile-title" data-i18n="nav.schemes">Schemes</span><span class="tile-desc" data-i18n="nav.schemes_desc"></span></a>
+        <a class="tile" href="#/documents"><span class="tile-icon" aria-hidden="true">📄</span><span class="tile-title" data-i18n="nav.documents">Documents</span><span class="tile-desc" data-i18n="nav.documents_desc"></span></a>
+        <a class="tile" href="#/grievance"><span class="tile-icon" aria-hidden="true">✉️</span><span class="tile-title" data-i18n="nav.grievance">Complaint</span><span class="tile-desc" data-i18n="nav.grievance_desc"></span></a>
+        <a class="tile" href="#/profile"><span class="tile-icon" aria-hidden="true">🧰</span><span class="tile-title" data-i18n="nav.profile">My Work</span><span class="tile-desc" data-i18n="nav.profile_desc"></span></a>
+      </nav>
+    </section>
+
+    <!-- MY WORK (profile) -->
+    <section data-view="profile" aria-labelledby="profile-title" hidden>
+      <a class="back" href="#/"><span aria-hidden="true">←</span> <span data-i18n="app.back">Back</span></a>
+      <h1 id="profile-title"><span aria-hidden="true">🧰</span> <span data-i18n="profile.title">My Work</span></h1>
+      <p class="muted" data-i18n="profile.intro"></p>
+      <form id="profile-form" class="card" novalidate>
+        <fieldset>
+          <legend data-i18n="profile.work_types">What work do you do?</legend>
+          <div id="p-work-types" class="checks"></div>
+        </fieldset>
+        <fieldset>
+          <legend data-i18n="profile.platforms">Which apps or employers?</legend>
+          <div id="p-platforms" class="checks"></div>
+        </fieldset>
+        <div class="form-error" role="alert" hidden></div>
+        <button type="submit" class="btn btn-primary"><span aria-hidden="true">💾</span> <span data-i18n="profile.save">Save</span></button>
+        <p id="profile-status" class="muted" role="status"></p>
+      </form>
+    </section>
+
+    <!-- INCOME & EXPENSES -->
+    <section data-view="ledger" aria-labelledby="ledger-title" hidden>
+      <a class="back" href="#/"><span aria-hidden="true">←</span> <span data-i18n="app.back">Back</span></a>
+      <h1 id="ledger-title"><span aria-hidden="true">💰</span> <span data-i18n="ledger.title">Income &amp; Expenses</span></h1>
+      <p class="muted" data-i18n="ledger.privacy"></p>
+
+      <form id="entry-form" class="card" novalidate>
+        <h2 id="entry-form-title" data-i18n="ledger.add_title">Add income or expense</h2>
+        <input type="hidden" name="id">
+        <fieldset class="kind-toggle">
+          <legend data-i18n="ledger.kind">Type</legend>
+          <label class="kind kind-income"><input type="radio" name="kind" value="income" required checked> <span aria-hidden="true">▲</span> <span data-i18n="ledger.kind_income">Income</span></label>
+          <label class="kind kind-expense"><input type="radio" name="kind" value="expense"> <span aria-hidden="true">▼</span> <span data-i18n="ledger.kind_expense">Expense</span></label>
+        </fieldset>
+        <div class="grid2">
+          <div class="field"><label for="e-date" data-i18n="ledger.date">Date</label><input id="e-date" name="date" type="date" required></div>
+          <div class="field"><label for="e-amount" data-i18n="ledger.amount">Amount</label><input id="e-amount" name="amount" type="number" inputmode="decimal" min="0.01" max="1000000" step="0.01" required></div>
+          <div class="field"><label for="e-category" data-i18n="ledger.category">Category</label><select id="e-category" name="category" required></select></div>
+          <div class="field"><label for="e-platform"><span data-i18n="ledger.platform">Platform</span> <span class="muted" data-i18n="common.optional"></span></label><select id="e-platform" name="platform" data-options="platforms" data-empty-label="ledger.platform_none"></select></div>
+          <div class="field"><label for="e-work-type"><span data-i18n="ledger.work_type">Work type</span> <span class="muted" data-i18n="common.optional"></span></label><select id="e-work-type" name="work_type" data-options="work_types"></select></div>
+          <div class="field" id="hours-field"><label for="e-hours"><span data-i18n="ledger.hours">Hours</span> <span class="muted" data-i18n="common.optional"></span></label><input id="e-hours" name="hours" type="number" inputmode="decimal" min="0" max="24" step="0.25"></div>
+        </div>
+        <div class="field"><label for="e-note"><span data-i18n="ledger.note">Note</span> <span class="muted" data-i18n="common.optional"></span></label><input id="e-note" name="note" type="text" maxlength="80" autocomplete="off" data-voice></div>
+        <div class="form-error" role="alert" hidden></div>
+        <div class="row">
+          <button type="submit" class="btn btn-primary"><span aria-hidden="true">💾</span> <span data-i18n="ledger.save">Save</span></button>
+          <button type="button" id="entry-cancel" class="btn" hidden><span data-i18n="common.cancel">Cancel</span></button>
+        </div>
+        <p id="entry-status" class="muted" role="status"></p>
+      </form>
+
+      <section class="card" aria-labelledby="import-title">
+        <h2 id="import-title"><span aria-hidden="true">📥</span> <span data-i18n="import.title">Import from screenshot or SMS</span></h2>
+        <p class="muted" data-i18n="import.intro"></p>
+        <form id="import-file-form" novalidate>
+          <label for="import-file"><span aria-hidden="true">🖼️</span> <span data-i18n="import.file_label">Screenshot or PDF</span></label>
+          <input id="import-file" name="file" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" aria-describedby="import-file-hint">
+          <p id="import-file-hint" class="muted" data-i18n="import.file_hint"></p>
+          <div class="form-error" role="alert" hidden></div>
+          <button type="submit" class="btn btn-primary"><span aria-hidden="true">✨</span> <span data-i18n="import.read_file">Read file</span></button>
+        </form>
+        <form id="import-text-form" novalidate>
+          <label for="import-text"><span aria-hidden="true">💬</span> <span data-i18n="import.text_label">Or paste SMS text</span></label>
+          <textarea id="import-text" name="text" rows="4" minlength="5" maxlength="5000" required aria-describedby="import-text-hint" data-voice></textarea>
+          <p id="import-text-hint" class="muted" data-i18n="import.text_hint"></p>
+          <div class="form-error" role="alert" hidden></div>
+          <button type="submit" class="btn btn-primary"><span aria-hidden="true">✨</span> <span data-i18n="import.read_text">Read text</span></button>
+        </form>
+        <div id="import-status" aria-live="polite"></div>
+      </section>
+      <div id="review-panel" aria-live="polite"></div>
+
+      <section class="card" aria-labelledby="summary-title">
+        <h2 id="summary-title" data-i18n="ledger.summary_title">Summary</h2>
+        <div id="summary" aria-live="polite"></div>
+        <div class="row">
+          <button type="button" id="advice-btn" class="btn btn-primary"><span aria-hidden="true">✨</span> <span data-i18n="ledger.advice_button">Get AI advice</span></button>
+          <button type="button" id="export-btn" class="btn"><span aria-hidden="true">⬇️</span> <span data-i18n="ledger.export">Export CSV</span></button>
+        </div>
+        <div id="advice-result" class="ai-box" aria-live="polite"></div>
+      </section>
+
+      <section class="card" aria-labelledby="entries-title">
+        <h2 id="entries-title" data-i18n="ledger.list_title">Your entries</h2>
+        <ul id="entries" class="entry-list"></ul>
+      </section>
+    </section>
+
+    <!-- SAFETY -->
+    <section data-view="safety" aria-labelledby="safety-title" hidden>
+      <a class="back" href="#/"><span aria-hidden="true">←</span> <span data-i18n="app.back">Back</span></a>
+      <h1 id="safety-title"><span aria-hidden="true">🦺</span> <span data-i18n="safety.title">Safety</span></h1>
+      <p class="muted" data-i18n="safety.intro"></p>
+      <div class="card">
+        <h2 data-i18n="safety.topics">Quick questions</h2>
+        <div class="chips" id="safety-topics">
+          <button type="button" class="chip" data-topic="road"><span aria-hidden="true">🛵</span> <span data-i18n="safety.topic_road"></span></button>
+          <button type="button" class="chip" data-topic="night"><span aria-hidden="true">🌙</span> <span data-i18n="safety.topic_night"></span></button>
+          <button type="button" class="chip" data-topic="heat"><span aria-hidden="true">☀️</span> <span data-i18n="safety.topic_heat"></span></button>
+          <button type="button" class="chip" data-topic="harassment"><span aria-hidden="true">✋</span> <span data-i18n="safety.topic_harassment"></span></button>
+          <button type="button" class="chip" data-topic="accident"><span aria-hidden="true">🚑</span> <span data-i18n="safety.topic_accident"></span></button>
+          <button type="button" class="chip" data-topic="breakdown"><span aria-hidden="true">🔧</span> <span data-i18n="safety.topic_breakdown"></span></button>
+        </div>
+      </div>
+      <div class="card">
+        <ol id="chat-log" class="chat-log" aria-live="polite"></ol>
+        <form id="safety-form" novalidate>
+          <label for="safety-input" data-i18n="safety.label">Your question</label>
+          <textarea id="safety-input" name="message" rows="2" maxlength="1000" required data-i18n-placeholder="safety.placeholder" data-voice></textarea>
+          <div class="row">
+            <button type="submit" class="btn btn-primary"><span aria-hidden="true">➤</span> <span data-i18n="safety.send">Send</span></button>
+            <button type="button" id="chat-clear" class="btn"><span aria-hidden="true">🗑️</span> <span data-i18n="safety.clear">Clear</span></button>
+          </div>
+        </form>
+        <div id="safety-error" aria-live="assertive"></div>
+      </div>
+    </section>
+
+    <!-- SCHEMES -->
+    <section data-view="schemes" aria-labelledby="schemes-title" hidden>
+      <a class="back" href="#/"><span aria-hidden="true">←</span> <span data-i18n="app.back">Back</span></a>
+      <h1 id="schemes-title"><span aria-hidden="true">🏛️</span> <span data-i18n="schemes.title">Schemes</span></h1>
+      <p class="muted" data-i18n="schemes.intro"></p>
+      <form id="schemes-form" class="card" novalidate>
+        <div class="grid2">
+          <div class="field"><label for="s-age" data-i18n="schemes.age">Age</label><input id="s-age" name="age" type="number" inputmode="numeric" min="14" max="100" step="1" required></div>
+          <div class="field"><label for="s-income" data-i18n="schemes.income">Income</label><input id="s-income" name="monthly_income" type="number" inputmode="numeric" min="0" max="10000000" step="1" required></div>
+          <div class="field"><label for="s-state" data-i18n="schemes.state">State</label><select id="s-state" name="state" required data-options="states"></select></div>
+        </div>
+        <fieldset>
+          <legend data-i18n="schemes.occupation">Your work</legend>
+          <div id="s-work-types" class="checks"></div>
+        </fieldset>
+        <fieldset>
+          <legend data-i18n="schemes.bank">Bank account?</legend>
+          <div class="row radios">
+            <label class="radio"><input type="radio" name="has_bank_account" value="true" required> <span data-i18n="common.yes">Yes</span></label>
+            <label class="radio"><input type="radio" name="has_bank_account" value="false"> <span data-i18n="common.no">No</span></label>
+          </div>
+        </fieldset>
+        <div class="form-error" role="alert" hidden></div>
+        <button type="submit" class="btn btn-primary"><span aria-hidden="true">🔍</span> <span data-i18n="schemes.find">Find schemes</span></button>
+      </form>
+      <div id="scheme-results" aria-live="polite"></div>
+    </section>
+
+    <!-- DOCUMENTS -->
+    <section data-view="documents" aria-labelledby="documents-title" hidden>
+      <a class="back" href="#/"><span aria-hidden="true">←</span> <span data-i18n="app.back">Back</span></a>
+      <h1 id="documents-title"><span aria-hidden="true">📄</span> <span data-i18n="documents.title">Documents</span></h1>
+      <p class="muted" data-i18n="documents.intro"></p>
+      <div class="card">
+        <label for="d-goal" data-i18n="documents.goal">Goal</label>
+        <select id="d-goal" data-options="goals"></select>
+      </div>
+      <div id="doc-panel"></div>
+    </section>
+
+    <!-- GRIEVANCE -->
+    <section data-view="grievance" aria-labelledby="grievance-title" hidden>
+      <a class="back" href="#/"><span aria-hidden="true">←</span> <span data-i18n="app.back">Back</span></a>
+      <h1 id="grievance-title"><span aria-hidden="true">✉️</span> <span data-i18n="grievance.title">Complaint</span></h1>
+      <p class="muted" data-i18n="grievance.intro"></p>
+      <form id="grievance-form" class="card" novalidate>
+        <div class="grid2">
+          <div class="field"><label for="g-issue" data-i18n="grievance.issue">Problem</label><select id="g-issue" name="issue_type" required data-options="issues"></select></div>
+          <div class="field"><label for="g-platform" data-i18n="grievance.platform">Platform</label><select id="g-platform" name="platform" required data-options="platforms"></select></div>
+          <div class="field"><label for="g-employer"><span data-i18n="grievance.employer">Company</span> <span class="muted" data-i18n="common.optional"></span></label><input id="g-employer" name="employer_name" type="text" maxlength="100" autocomplete="organization" data-voice></div>
+          <div class="field"><label for="g-state"><span data-i18n="grievance.state">State</span> <span class="muted" data-i18n="common.optional"></span></label><select id="g-state" name="state" data-options="states" data-optional></select></div>
+          <div class="field"><label for="g-start" data-i18n="grievance.start_date">Date</label><input id="g-start" name="start_date" type="date" required></div>
+          <div class="field"><label for="g-end"><span data-i18n="grievance.end_date">Last date</span> <span class="muted" data-i18n="common.optional"></span></label><input id="g-end" name="end_date" type="date"></div>
+          <div class="field"><label for="g-amount"><span data-i18n="grievance.amount">Amount</span> <span class="muted" data-i18n="common.optional"></span></label><input id="g-amount" name="amount" type="number" inputmode="decimal" min="0" max="10000000" step="0.01"></div>
+        </div>
+        <div class="field">
+          <label for="g-description" data-i18n="grievance.description">What happened?</label>
+          <textarea id="g-description" name="description" rows="5" minlength="10" maxlength="2000" required aria-describedby="g-description-hint" data-voice></textarea>
+          <p id="g-description-hint" class="muted" data-i18n="grievance.description_hint"></p>
+        </div>
+        <div class="form-error" role="alert" hidden></div>
+        <button type="submit" class="btn btn-primary"><span aria-hidden="true">📝</span> <span data-i18n="grievance.submit">Draft</span></button>
+      </form>
+      <div id="grievance-result" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <aside class="emergency" aria-labelledby="emergency-title">
+    <h2 id="emergency-title" data-i18n="emergency.title">Emergency help</h2>
+    <ul class="emergency-list">
+      <li><a class="sos" href="tel:112"><span class="sos-num">🚨 112</span><span class="sos-label" data-i18n="emergency.emergency">Emergency</span></a></li>
+      <li><a class="sos" href="tel:108"><span class="sos-num">🚑 108</span><span class="sos-label" data-i18n="emergency.ambulance">Ambulance</span></a></li>
+      <li><a class="sos" href="tel:1091"><span class="sos-num">👩 1091</span><span class="sos-label" data-i18n="emergency.women_1091">Women helpline</span></a></li>
+      <li><a class="sos" href="tel:181"><span class="sos-num">👩 181</span><span class="sos-label" data-i18n="emergency.women_181">Women helpline</span></a></li>
+    </ul>
+  </aside>
+</body>
+</html>

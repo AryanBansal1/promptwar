@@ -1,0 +1,185 @@
+{
+  "version": 2,
+  "platform_support": {
+    "swiggy": {
+      "name": "Swiggy (in-app Help first, then the grievance email)",
+      "website": "https://www.swiggy.com",
+      "help_url": "https://www.swiggy.com/support",
+      "email": "grievances@swiggy.in",
+      "source_url": "https://www.swiggy.com/corporate/wp-content/uploads/2025/08/Stakeholder-Engagement-and-Grievance-Redressal-Policy-.pdf",
+      "last_verified": "2026-10-17"
+    },
+    "zomato": {
+      "name": "Zomato Grievance Officer (Eternal Limited)",
+      "website": "https://www.zomato.com",
+      "help_url": "https://www.zomato.com/contact",
+      "email": "grievance@zomato.com",
+      "source_url": "https://www.zomato.com/policies/terms-of-service",
+      "last_verified": "2026-10-17"
+    },
+    "uber": {
+      "name": "Uber driver support (in-app Help)",
+      "website": "https://www.uber.com/in/en/",
+      "help_url": null,
+      "email": null,
+      "source_url": "https://www.uber.com/in/en/",
+      "last_verified": "2026-10-17"
+    },
+    "ola": {
+      "name": "Ola driver support (in-app Support)",
+      "website": "https://www.olacabs.com",
+      "help_url": null,
+      "email": null,
+      "source_url": "https://www.olacabs.com",
+      "last_verified": "2026-10-17"
+    },
+    "rapido": {
+      "name": "Rapido captain support (in-app Help)",
+      "website": "https://www.rapido.bike",
+      "help_url": null,
+      "email": null,
+      "source_url": "https://www.rapido.bike",
+      "last_verified": "2026-10-17"
+    },
+    "urban_company": {
+      "name": "Urban Company partner support (in-app Help)",
+      "website": "https://www.urbancompany.com",
+      "help_url": null,
+      "email": null,
+      "source_url": "https://www.urbancompany.com",
+      "last_verified": "2026-10-17"
+    },
+    "bharat_taxi": {
+      "name": "Bharat Taxi driver support (in-app Help)",
+      "website": null,
+      "help_url": null,
+      "email": null,
+      "source_url": null,
+      "last_verified": null
+    },
+    "porter": {
+      "name": "Porter Grievance Officer (SmartShift Logistics Solutions)",
+      "website": "https://porter.in",
+      "help_url": null,
+      "email": "grievance.officer@theporter.in",
+      "source_url": "https://porter.in/terms-of-service",
+      "last_verified": "2026-10-17"
+    },
+    "blinkit": {
+      "name": "Blinkit partner support (in-app Help)",
+      "website": "https://blinkit.com",
+      "help_url": null,
+      "email": null,
+      "source_url": "https://blinkit.com",
+      "last_verified": "2026-10-17"
+    },
+    "zepto": {
+      "name": "Zepto partner support (in-app Help)",
+      "website": "https://www.zeptonow.com",
+      "help_url": null,
+      "email": null,
+      "source_url": "https://www.zeptonow.com",
+      "last_verified": "2026-10-17"
+    },
+    "other": {
+      "name": "Your contractor / employer (give the letter in writing and keep a copy)",
+      "website": null,
+      "help_url": null,
+      "email": null,
+      "source_url": null,
+      "last_verified": null
+    }
+  },
+  "channels": {
+    "nch": {
+      "kind": "consumer_helpline",
+      "name": "National Consumer Helpline",
+      "url": "https://consumerhelpline.gov.in",
+      "phone": "1915",
+      "source_url": "https://consumerhelpline.gov.in",
+      "last_verified": "2026-10-17"
+    },
+    "samadhan": {
+      "kind": "labour_portal",
+      "name": "SAMADHAN portal, Ministry of Labour & Employment",
+      "url": "https://samadhan.labour.gov.in",
+      "phone": null,
+      "source_url": "https://samadhan.labour.gov.in",
+      "last_verified": "2026-10-17"
+    },
+    "clc": {
+      "kind": "labour_portal",
+      "name": "Office of the Chief Labour Commissioner (Central)",
+      "url": "https://clc.gov.in",
+      "phone": null,
+      "source_url": "https://clc.gov.in",
+      "last_verified": "2026-10-17"
+    },
+    "labour_department": {
+      "kind": "labour_department",
+      "name": "State Labour Department / Labour Commissioner office",
+      "url": "https://labour.gov.in",
+      "phone": null,
+      "source_url": "https://labour.gov.in",
+      "last_verified": "2026-10-17"
+    },
+    "ncw": {
+      "kind": "women_commission",
+      "name": "National Commission for Women",
+      "url": "https://ncw.gov.in",
+      "phone": null,
+      "source_url": "https://ncw.gov.in",
+      "last_verified": "2026-10-17"
+    },
+    "police": {
+      "kind": "police",
+      "name": "Police (file an FIR / complaint at the nearest police station)",
+      "url": null,
+      "phone": "112",
+      "source_url": null,
+      "last_verified": null
+    },
+    "consumer_commission": {
+      "kind": "consumer_commission",
+      "name": "Consumer Commission e-filing (e-Jagriti)",
+      "url": "https://e-jagriti.gov.in",
+      "phone": null,
+      "source_url": "https://e-jagriti.gov.in",
+      "last_verified": "2026-10-17"
+    }
+  },
+  "routes": {
+    "unpaid_earnings": [
+      "platform",
+      "nch",
+      "labour_department",
+      "samadhan"
+    ],
+    "account_deactivation": [
+      "platform",
+      "nch",
+      "labour_department"
+    ],
+    "unfair_penalty": [
+      "platform",
+      "nch",
+      "consumer_commission"
+    ],
+    "harassment": [
+      "platform",
+      "police",
+      "ncw"
+    ],
+    "accident_claim": [
+      "platform",
+      "police",
+      "labour_department"
+    ],
+    "wage_theft": [
+      "platform",
+      "labour_department",
+      "samadhan",
+      "clc"
+    ]
+  }
+}

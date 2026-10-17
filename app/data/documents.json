@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "documents": [
+    {"id": "aadhaar", "name": "Aadhaar card", "description": "Your 12-digit Aadhaar number or card (e-Aadhaar from uidai.gov.in also works)."},
+    {"id": "aadhaar_linked_mobile", "name": "Mobile number linked to Aadhaar", "description": "Needed to receive the OTP. Update it at an Aadhaar Seva Kendra if it is not linked."},
+    {"id": "bank_account", "name": "Bank account details / passbook", "description": "Account number and IFSC code, usually printed on the first page of the passbook."},
+    {"id": "photo", "name": "Passport-size photo", "description": "Recent colour photo with a plain background."},
+    {"id": "address_proof", "name": "Address proof", "description": "Aadhaar, voter ID, electricity bill, rent agreement or ration card with your current address."},
+    {"id": "age_proof", "name": "Age proof", "description": "Aadhaar, birth certificate, school leaving certificate, PAN or passport."},
+    {"id": "pan_card", "name": "PAN card", "description": "Permanent Account Number. Some banks ask for it, or Form 60 if you do not have PAN."},
+    {"id": "learner_licence", "name": "Learner's licence", "description": "You must hold it for at least 30 days before the driving test."},
+    {"id": "medical_certificate", "name": "Medical certificate (Form 1-A)", "description": "From a registered doctor. Needed if you are 40 or older, or for a commercial / transport licence."},
+    {"id": "ration_card", "name": "Ration card", "description": "Shows your family is listed under the National Food Security Act or a state scheme."},
+    {"id": "family_aadhaar", "name": "Aadhaar of all family members", "description": "Aadhaar numbers of everyone to be added to the card."},
+    {"id": "income_certificate", "name": "Income certificate", "description": "Issued by the tehsil / revenue office. Some states ask for it for ration cards."},
+    {"id": "work_proof", "name": "Proof of platform work", "description": "Partner ID screenshot, payout statements or ID card from the platform or contractor."}
+  ],
+  "goals": [
+    {
+      "id": "eshram",
+      "name": "e-Shram registration",
+      "documents": ["aadhaar", "aadhaar_linked_mobile", "bank_account"],
+      "steps": [
+        "Open eshram.gov.in and choose 'Register on e-Shram'.",
+        "Enter your Aadhaar-linked mobile number and verify with OTP.",
+        "Enter your Aadhaar number and verify with OTP.",
+        "Fill address, education, occupation and bank account details.",
+        "Submit and download your e-Shram (UAN) card. Registration is free; a CSC can help at no cost."
+      ],
+      "official_url": "https://eshram.gov.in"
+    },
+    {
+      "id": "bank_account",
+      "name": "Open a bank account (Jan Dhan)",
+      "documents": ["aadhaar", "photo", "aadhaar_linked_mobile", "pan_card"],
+      "steps": [
+        "Go to any bank branch or a Bank Mitra (business correspondent) near you.",
+        "Ask for a Pradhan Mantri Jan Dhan Yojana (PMJDY) zero-balance savings account.",
+        "Fill the account opening form and give your Aadhaar for e-KYC.",
+        "If you have no PAN, fill Form 60 instead.",
+        "Collect your passbook and RuPay debit card."
+      ],
+      "official_url": "https://pmjdy.gov.in"
+    },
+    {
+      "id": "driving_licence",
+      "name": "Driving licence",
+      "documents": ["aadhaar", "age_proof", "address_proof", "photo", "medical_certificate", "learner_licence"],
+      "steps": [
+        "Apply for a learner's licence online on the Parivahan Sarathi service (parivahan.gov.in) and pay the fee.",
+        "Pass the online or RTO learner's licence test.",
+        "After 30 days (and within 6 months), apply for the permanent driving licence.",
+        "Book a slot and take the driving test at the RTO with your vehicle.",
+        "The licence is sent to your address; you can also use the DigiLocker copy."
+      ],
+      "official_url": "https://parivahan.gov.in"
+    },
+    {
+      "id": "ayushman_card",
+      "name": "Ayushman card (PM-JAY)",
+      "documents": ["aadhaar", "aadhaar_linked_mobile", "ration_card"],
+      "steps": [
+        "Open beneficiary.nha.gov.in or the Ayushman app and log in with your mobile number.",
+        "Search your name by state and Aadhaar / ration card to check eligibility.",
+        "Complete Aadhaar e-KYC with OTP or fingerprint.",
+        "Download the Ayushman card once it is approved.",
+        "Or visit a CSC or the Ayushman Mitra desk at an empanelled hospital for help."
+      ],
+      "official_url": "https://beneficiary.nha.gov.in"
+    },
+    {
+      "id": "pan",
+      "name": "PAN card",
+      "documents": ["aadhaar", "aadhaar_linked_mobile"],
+      "steps": [
+        "Open incometax.gov.in and choose 'Instant e-PAN'.",
+        "Enter your Aadhaar number and verify with the OTP sent to your linked mobile.",
+        "Check your details and submit; the e-PAN is free.",
+        "Download the e-PAN PDF after a short time using your acknowledgement number."
+      ],
+      "official_url": "https://www.incometax.gov.in"
+    },
+    {
+      "id": "ration_card",
+      "name": "Ration card",
+      "documents": ["family_aadhaar", "address_proof", "photo", "income_certificate", "bank_account"],
+      "steps": [
+        "Ration cards are issued by your state Food & Civil Supplies department. Find your state portal from nfsa.gov.in.",
+        "Fill the new ration card form online or at the food office / CSC.",
+        "Add all family members with their Aadhaar numbers.",
+        "Submit documents; an inspector may verify your address.",
+        "Track the application status on the state portal."
+      ],
+      "official_url": "https://nfsa.gov.in"
+    }
+  ]
+}

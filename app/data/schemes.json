@@ -1,0 +1,213 @@
+{
+  "version": 1,
+  "schemes": [
+    {
+      "id": "eshram",
+      "name": "e-Shram (National Database of Unorganised Workers)",
+      "kind": "scheme",
+      "summary": "Free government registration for unorganised, gig and platform workers. You get a Universal Account Number (UAN) card, which is the gateway to social security schemes.",
+      "eligibility_any_of": [
+        {
+          "min_age": 16,
+          "max_age": 59,
+          "note": "Unorganised workers aged 16-59, including gig and platform workers, who are not members of EPFO or ESIC and do not pay income tax."
+        }
+      ],
+      "benefits": [
+        "e-Shram card with a 12-digit Universal Account Number (UAN), valid across India.",
+        "Registration is free.",
+        "Platform workers registered on e-Shram are to be covered for hospital care under Ayushman Bharat PM-JAY (announced in Union Budget 2025-26).",
+        "Helps the government reach you with social security schemes and help during emergencies."
+      ],
+      "how_to_apply": [
+        "Self-register at eshram.gov.in using your Aadhaar number and the mobile number linked to Aadhaar.",
+        "Or visit a Common Service Centre (CSC) for free assisted registration.",
+        "Fill in occupation, address, education and bank account details, then download your e-Shram card."
+      ],
+      "official_url": "https://eshram.gov.in",
+      "required_documents": [
+        "aadhaar",
+        "aadhaar_linked_mobile",
+        "bank_account"
+      ],
+      "document_goal": "eshram",
+      "last_verified": "2026-10-17"
+    },
+    {
+      "id": "pm_sym",
+      "name": "Pradhan Mantri Shram Yogi Maan-dhan (PM-SYM)",
+      "kind": "scheme",
+      "summary": "A voluntary pension scheme for unorganised workers. You pay a small monthly amount and the government pays the same amount into your pension.",
+      "eligibility_any_of": [
+        {
+          "min_age": 18,
+          "max_age": 40,
+          "max_monthly_income": 15000,
+          "requires_bank_account": true,
+          "note": "Unorganised workers aged 18-40 earning Rs 15,000 or less per month, with a savings bank or Jan Dhan account. Not for members of EPFO, ESIC or NPS, or income tax payers."
+        }
+      ],
+      "benefits": [
+        "Assured pension of Rs 3,000 per month after age 60.",
+        "Monthly contribution of about Rs 55 to Rs 200, depending on your age when you join.",
+        "The government adds an equal (1:1) matching contribution.",
+        "If the subscriber dies after 60, the spouse gets 50% of the pension as family pension."
+      ],
+      "how_to_apply": [
+        "Visit a Common Service Centre (CSC) with your Aadhaar and bank passbook, or apply online at maandhan.in.",
+        "Give consent for auto-debit of the monthly contribution from your bank account.",
+        "Keep the Shram Yogi pension card you receive."
+      ],
+      "official_url": "https://maandhan.in",
+      "required_documents": [
+        "aadhaar",
+        "aadhaar_linked_mobile",
+        "bank_account"
+      ],
+      "document_goal": null,
+      "last_verified": "2026-10-17"
+    },
+    {
+      "id": "pmjjby",
+      "name": "Pradhan Mantri Jeevan Jyoti Bima Yojana (PMJJBY)",
+      "kind": "scheme",
+      "summary": "Low-cost life insurance. If the insured person dies for any reason, the family gets Rs 2 lakh.",
+      "eligibility_any_of": [
+        {
+          "min_age": 18,
+          "max_age": 50,
+          "requires_bank_account": true,
+          "note": "People aged 18-50 with a savings bank or post office account who give consent for auto-debit."
+        }
+      ],
+      "benefits": [
+        "Life cover of Rs 2 lakh for death due to any reason.",
+        "Premium of Rs 436 per year, auto-debited from your bank account.",
+        "Cover can continue up to age 55 if you keep paying the premium."
+      ],
+      "how_to_apply": [
+        "Ask at your bank branch or post office, or use your bank's net banking / mobile app.",
+        "Fill the PMJJBY enrolment and consent-cum-declaration form and name a nominee.",
+        "Keep enough balance for the yearly auto-debit."
+      ],
+      "official_url": "https://jansuraksha.gov.in",
+      "required_documents": [
+        "aadhaar",
+        "bank_account"
+      ],
+      "document_goal": null,
+      "last_verified": "2026-10-17"
+    },
+    {
+      "id": "pmsby",
+      "name": "Pradhan Mantri Suraksha Bima Yojana (PMSBY)",
+      "kind": "scheme",
+      "summary": "Very low-cost accident insurance, useful for anyone who works on the road.",
+      "eligibility_any_of": [
+        {
+          "min_age": 18,
+          "max_age": 70,
+          "requires_bank_account": true,
+          "note": "People aged 18-70 with a savings bank or post office account who give consent for auto-debit."
+        }
+      ],
+      "benefits": [
+        "Rs 2 lakh for accidental death or full permanent disability.",
+        "Rs 1 lakh for partial permanent disability.",
+        "Premium of only Rs 20 per year, auto-debited from your bank account."
+      ],
+      "how_to_apply": [
+        "Ask at your bank branch or post office, or use your bank's net banking / mobile app.",
+        "Fill the PMSBY enrolment and consent form and name a nominee.",
+        "Keep enough balance for the yearly auto-debit."
+      ],
+      "official_url": "https://jansuraksha.gov.in",
+      "required_documents": [
+        "aadhaar",
+        "bank_account"
+      ],
+      "document_goal": null,
+      "last_verified": "2026-10-17"
+    },
+    {
+      "id": "pm_jay",
+      "name": "Ayushman Bharat Pradhan Mantri Jan Arogya Yojana (AB PM-JAY)",
+      "kind": "scheme",
+      "summary": "Free hospital treatment up to Rs 5 lakh per family per year at empanelled government and private hospitals.",
+      "eligibility_any_of": [
+        {
+          "note": "Online platform (gig) workers registered on e-Shram are to be covered, as announced in Union Budget 2025-26.",
+          "work_types": [
+            "delivery",
+            "ride_hailing",
+            "bike_taxi",
+            "home_services"
+          ]
+        },
+        {
+          "min_age": 70,
+          "note": "All senior citizens aged 70 and above are covered, irrespective of income."
+        },
+        {
+          "max_monthly_income": 10000,
+          "note": "Low-income families may already be listed under the SECC 2011 / state beneficiary lists. Check your name on the official beneficiary portal."
+        }
+      ],
+      "benefits": [
+        "Cashless hospital treatment up to Rs 5 lakh per family per year.",
+        "Covers secondary and tertiary care hospitalisation at empanelled hospitals across India.",
+        "No limit on family size or age (for listed families)."
+      ],
+      "how_to_apply": [
+        "Check eligibility and make your Ayushman card at beneficiary.nha.gov.in or through the Ayushman app.",
+        "Or visit a Common Service Centre or an empanelled hospital's Ayushman Mitra desk.",
+        "Gig and platform workers should first register on e-Shram."
+      ],
+      "official_url": "https://nha.gov.in/PM-JAY",
+      "required_documents": [
+        "aadhaar",
+        "aadhaar_linked_mobile",
+        "ration_card"
+      ],
+      "document_goal": "ayushman_card",
+      "last_verified": "2026-10-17"
+    },
+    {
+      "id": "code_social_security_2020",
+      "name": "Code on Social Security, 2020 - rights of gig and platform workers",
+      "kind": "law",
+      "summary": "A national labour law, in force from 21 November 2025, that for the first time recognises gig workers and platform workers and creates social security schemes and a fund for them.",
+      "eligibility_any_of": [
+        {
+          "note": "Applies to gig workers and platform workers who earn through apps or online platforms.",
+          "work_types": [
+            "delivery",
+            "ride_hailing",
+            "bike_taxi",
+            "home_services"
+          ]
+        }
+      ],
+      "benefits": [
+        "Legal definition of 'gig worker' and 'platform worker', so you are recognised by law.",
+        "The government can make schemes for life and disability cover, accident insurance, health and maternity benefits, old-age protection and creches for gig and platform workers.",
+        "Aggregators (platform companies) must contribute 1-2% of annual turnover to a Social Security Fund, capped at 5% of the amount paid to workers.",
+        "Gig and platform workers must be registered, with an Aadhaar-linked account so benefits can move with you across states.",
+        "Gig and platform workers have representatives on the National Social Security Board."
+      ],
+      "how_to_apply": [
+        "Register on e-Shram so that you are counted and can receive these benefits.",
+        "Keep proof of your work on the platform (partner ID, payout statements).",
+        "For a dispute, use the platform's grievance officer first, then your state Labour Department."
+      ],
+      "official_url": "https://labour.gov.in",
+      "required_documents": [
+        "aadhaar",
+        "aadhaar_linked_mobile",
+        "work_proof"
+      ],
+      "document_goal": "eshram",
+      "last_verified": "2026-10-17"
+    }
+  ]
+}

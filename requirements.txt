@@ -1,0 +1,7 @@
+# Runtime dependencies (pinned). Install: pip install -r requirements.txt
+fastapi==0.143.3
+starlette==1.8.0
+uvicorn==0.54.0
+pydantic==2.14.1
+pydantic-settings==2.16.0
+google-genai==2.31.0
