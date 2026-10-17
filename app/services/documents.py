@@ -53,7 +53,8 @@ def checklist_record(checklist: Checklist) -> dict[str, object]:
 async def explain_checklist(llm: LLMClient, checklist: Checklist, language: Language, cache: TTLCache[str]) -> str:
     """Step-by-step explanation. Cached because the input is fully curated."""
     request = documents_explain_request(checklist_record(checklist), language)
-    return await generate_capped_text(llm, "documents_explain", request, cache)
+    key = (language.value, checklist.kind.value, checklist.id)
+    return await generate_capped_text(llm, "documents_explain", request, cache, cache_key=key)
 
 
 async def answer_question(

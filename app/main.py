@@ -5,41 +5,62 @@ Run with ``uvicorn app.main:create_app --factory``. Vercel imports the module-le
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import logging
 from pathlib import Path
 
-from fastapi import FastAPI
+import anyio
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from starlette.types import Scope
 
 from app.cache import TTLCache
 from app.config import ConfigError, Settings, get_settings, validate_settings
 from app.errors import register_exception_handlers
+from app.http_cache import cached_bytes_response
 from app.llm.client import GeminiClient, LLMClient, build_llm_client
 from app.routers import ask, documents, grievance, ledger, meta, safety, schemes, voice
-from app.security import RateLimiter, SecurityMiddleware
+from app.security import Limiters, RateLimiter, SecurityMiddleware, api_rate_limit
 from app.services.data_store import get_data_store
 from app.services.uploads import MAX_AUDIO_BYTES, MAX_IMPORT_BYTES
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 ASSET_VERSION_MARKER = "__ASSET_VERSION__"
-# Raw-upload endpoints get their own body cap; everything else keeps settings.max_body_bytes.
+# Raw-upload endpoints get their own body cap and skip the JSON content-type rule.
 UPLOAD_LIMITS: dict[str, int] = {ledger.IMPORT_FILE_PATH: MAX_IMPORT_BYTES, voice.TRANSCRIBE_PATH: MAX_AUDIO_BYTES}
+_COMPRESSIBLE = {".js", ".css", ".html", ".txt", ".json", ".svg"}
 
 logger = logging.getLogger("saathi")
 
 
 class CachedStaticFiles(StaticFiles):
-    """Static files with long-lived cache headers; URLs are versioned by content hash."""
+    """Static files with long-lived cache headers (URLs carry a content hash) and gzip computed
+    once per file and kept in memory, instead of re-compressing on every request."""
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
+        self._gzipped: dict[str, bytes] = {}
 
     async def get_response(self, path: str, scope: Scope):  # type: ignore[no-untyped-def]
         response = await super().get_response(path, scope)
-        if response.status_code == 200:
-            response.headers["Cache-Control"] = "public, max-age=604800, immutable"
+        if response.status_code != 200:
+            return response
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        accepts_gzip = b"gzip" in dict(scope.get("headers", [])).get(b"accept-encoding", b"")
+        if accepts_gzip and Path(path).suffix in _COMPRESSIBLE:
+            compressed = self._gzipped.get(path)
+            if compressed is None:
+                full, _ = self.lookup_path(path)
+                data = await anyio.Path(full).read_bytes()  # once per file, off the event loop
+                compressed = self._gzipped[path] = gzip.compress(data, compresslevel=9, mtime=0)
+            headers = dict(response.headers)
+            headers.pop("content-length", None)
+            headers.update({"Content-Encoding": "gzip", "Vary": "Accept-Encoding"})
+            return Response(compressed, status_code=200, headers=headers, media_type=response.media_type)
         return response
 
 
@@ -51,10 +72,10 @@ def _asset_version(static_dir: Path) -> str:
     return digest.hexdigest()[:12]
 
 
-def _render_index(static_dir: Path) -> str:
+def _render_index(static_dir: Path) -> bytes:
     """Read index.html once and stamp asset URLs with a content hash for cache busting."""
     html = (static_dir / "index.html").read_text(encoding="utf-8")
-    return html.replace(ASSET_VERSION_MARKER, _asset_version(static_dir))
+    return html.replace(ASSET_VERSION_MARKER, _asset_version(static_dir)).encode()
 
 
 def _configure_logging(level: str) -> None:
@@ -87,7 +108,11 @@ def create_app(settings: Settings | None = None, llm_client: LLMClient | None = 
     app.state.llm_client = client
     app.state.data_store = get_data_store()
     app.state.ai_cache = TTLCache[str](settings.ai_cache_size, settings.ai_cache_ttl_seconds)
-    app.state.rate_limiter = RateLimiter(settings.ai_rate_limit_per_minute)
+    app.state.limiters = Limiters(
+        ai=RateLimiter(settings.ai_rate_limit_per_minute),
+        api=RateLimiter(settings.api_rate_limit_per_minute),
+        ai_global=RateLimiter(settings.ai_global_per_minute),
+    )
 
     register_exception_handlers(app)
     app.add_middleware(GZipMiddleware, minimum_size=500)
@@ -98,16 +123,17 @@ def create_app(settings: Settings | None = None, llm_client: LLMClient | None = 
             allow_methods=["GET", "POST"],
             allow_headers=["Content-Type"],
         )
-    app.add_middleware(SecurityMiddleware, max_body_bytes=settings.max_body_bytes, path_limits=UPLOAD_LIMITS)
+    app.add_middleware(SecurityMiddleware, max_body_bytes=settings.max_body_bytes, raw_paths=UPLOAD_LIMITS)
 
-    for module in (meta, ledger, safety, schemes, documents, grievance, ask, voice):
-        app.include_router(module.router)
+    app.include_router(meta.router)
+    for module in (ledger, safety, schemes, documents, grievance, ask, voice):
+        app.include_router(module.router, dependencies=[Depends(api_rate_limit)])
 
     index_html = _render_index(STATIC_DIR)
 
     @app.get("/", include_in_schema=False)
-    async def index() -> HTMLResponse:
-        return HTMLResponse(index_html, headers={"Cache-Control": "no-cache"})
+    async def index(request: Request) -> Response:
+        return cached_bytes_response(request, index_html, "text/html; charset=utf-8", "no-cache")
 
     app.mount("/static", CachedStaticFiles(directory=STATIC_DIR), name="static")
     logger.info("startup env=%s ai_configured=%s model=%s", settings.env, settings.ai_configured, settings.gemini_model)

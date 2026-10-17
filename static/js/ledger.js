@@ -244,6 +244,7 @@ window.SaathiLedger = (() => {
   }
 
   let summaryTicket = 0;
+  let lastSummary = { key: null, value: null }; // skip the request when nothing changed (e.g. language switch)
   async function renderSummary(entries) {
     const container = $("#summary");
     $("#advice-btn").disabled = !entries.length;
@@ -252,7 +253,9 @@ window.SaathiLedger = (() => {
     const ticket = ++summaryTicket;
     S.showLoading(container);
     try {
-      const summary = await fetchSummary(entries);
+      const key = `${S.todayISO()}|${JSON.stringify(entries)}`;
+      const summary = lastSummary.key === key ? lastSummary.value : await fetchSummary(entries);
+      lastSummary = { key, value: summary };
       if (ticket === summaryTicket) drawSummary(container, summary);
     } catch (err) {
       if (ticket === summaryTicket) S.showError(container, err, () => renderSummary(load()));
@@ -313,7 +316,8 @@ window.SaathiLedger = (() => {
 
   function reviewRow(review, row, index) {
     const id = (name) => `rv-${index}-${name}`;
-    const update = (key, value) => { row[key] = value; S.session.set(REVIEW_KEY, review); };
+    const persist = S.debounce(() => S.session.set(REVIEW_KEY, review));
+    const update = (key, value) => { row[key] = value; persist(); };
     const include = el("input", { type: "checkbox", id: id("include"), checked: row.include });
     include.addEventListener("change", () => { update("include", include.checked); renderReviewCount(review); });
     const date = el("input", { type: "date", id: id("date"), value: row.date, max: S.todayISO(), required: true });

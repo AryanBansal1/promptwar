@@ -20,3 +20,8 @@ htmlcov/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Demo recordings (never committed)
+demo_output/
+*.mp4
+*.webm

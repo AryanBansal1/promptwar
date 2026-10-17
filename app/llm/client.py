@@ -11,14 +11,15 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass
-from typing import Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar
 
-from google import genai
-from google.genai import errors as genai_errors
-from google.genai import types
 from pydantic import BaseModel, ValidationError
 
 from app.config import Settings
+
+if TYPE_CHECKING:  # the SDK is imported lazily: it is the slowest import and only AI calls need it
+    from google.genai import Client as GenaiClient
+    from google.genai import types
 
 logger = logging.getLogger("saathi.llm")
 
@@ -84,13 +85,6 @@ class LLMRequest:
     # caller's schema so that each list item can be validated, and dropped, on its own.
     response_schema: type[BaseModel] | None = None
 
-    def contents(self) -> str | list[types.Part]:
-        """Prompt text, preceded by any attachments as inline parts."""
-        if not self.attachments:
-            return self.prompt
-        parts = [types.Part.from_bytes(data=a.data, mime_type=a.mime_type) for a in self.attachments]
-        return [*parts, types.Part.from_text(text=self.prompt)]
-
 
 class LLMClient(Protocol):
     """Interface every LLM backend implements."""
@@ -105,15 +99,45 @@ class LLMClient(Protocol):
 
 
 class GeminiClient:
-    """Async Gemini client with an overall deadline and one retry on transient failures."""
+    """Async Gemini client with an overall deadline and one retry on transient failures.
+
+    One instance lives for the whole process (app.state), and the SDK client inside it is created
+    once, on first use, so its pooled HTTP connections are reused by every request.
+    """
 
     def __init__(self, settings: Settings) -> None:
         if not settings.ai_configured or settings.gemini_api_key is None:
             raise ValueError("GeminiClient requires GEMINI_API_KEY")
-        self._client = genai.Client(api_key=settings.gemini_api_key.get_secret_value())
+        self._api_key = settings.gemini_api_key
         self._model = settings.gemini_model
         self._timeout = settings.llm_timeout_seconds
         self._thinking_budget = settings.gemini_thinking_budget
+        self._sdk: GenaiClient | None = None
+
+    @property
+    def _client(self) -> GenaiClient:
+        if self._sdk is None:
+            from google import genai
+            from google.genai import types
+
+            # HTTP timeout slightly above the longest per-feature deadline, so sockets never hang on.
+            http = types.HttpOptions(timeout=int(max(self._timeout, 60) * 1000))
+            self._sdk = genai.Client(api_key=self._api_key.get_secret_value(), http_options=http)
+        return self._sdk
+
+    @_client.setter
+    def _client(self, value: Any) -> None:  # tests swap in a stub SDK
+        self._sdk = value
+
+    @staticmethod
+    def _contents(request: LLMRequest) -> str | list[types.Part]:
+        """Prompt text, preceded by any attachments as inline parts (bytes are not copied again)."""
+        if not request.attachments:
+            return request.prompt
+        from google.genai import types
+
+        parts = [types.Part.from_bytes(data=a.data, mime_type=a.mime_type) for a in request.attachments]
+        return [*parts, types.Part.from_text(text=request.prompt)]
 
     async def generate_text(self, request: LLMRequest) -> str:
         """Generate plain text."""
@@ -129,6 +153,8 @@ class GeminiClient:
             raise ai_bad_output() from exc
 
     def _config(self, request: LLMRequest, schema: type[BaseModel] | None) -> types.GenerateContentConfig:
+        from google.genai import types
+
         config = types.GenerateContentConfig(
             system_instruction=request.system,
             max_output_tokens=request.max_output_tokens,
@@ -142,16 +168,17 @@ class GeminiClient:
         return config
 
     async def _generate(self, request: LLMRequest, schema: type[BaseModel] | None) -> str:
+        from google.genai import errors as genai_errors
+
         config = self._config(request, schema)
+        contents = self._contents(request)
         deadline = time.monotonic() + (request.timeout_seconds or self._timeout)
         for attempt in (1, 2):
             remaining = deadline - time.monotonic()
             started = time.perf_counter()
             try:
                 response = await asyncio.wait_for(
-                    self._client.aio.models.generate_content(
-                        model=self._model, contents=request.contents(), config=config
-                    ),
+                    self._client.aio.models.generate_content(model=self._model, contents=contents, config=config),
                     timeout=remaining,
                 )
             except TimeoutError as exc:

@@ -92,7 +92,8 @@ def test_transcript_is_never_logged(
 
 def test_transcribe_is_rate_limited(fake_llm: FakeLLMClient) -> None:
     fake_llm.json_responses["TranscriptOutput"] = {"transcript": "hi", "has_speech": True}
-    with TestClient(create_app(make_settings(ai_rate_limit_per_minute=2), llm_client=fake_llm)) as c:
+    # Audio costs 3 rate-limit units, so a budget of 6 allows exactly two transcriptions per minute.
+    with TestClient(create_app(make_settings(ai_rate_limit_per_minute=6), llm_client=fake_llm)) as c:
         codes = [post(c, OGG, "audio/ogg").status_code for _ in range(3)]  # type: ignore[attr-defined]
     assert codes == [200, 200, 429]
 

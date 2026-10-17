@@ -14,3 +14,7 @@ __pycache__/
 .ruff_cache/
 .coverage
 htmlcov/
+
+# Demo tooling and recordings
+scripts/
+demo_output/

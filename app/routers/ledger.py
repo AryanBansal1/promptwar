@@ -6,12 +6,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query, Request
 
-from app.deps import AI_RATE_LIMIT, LLMDep
+from app.deps import AI_HEAVY_RATE_LIMIT, AI_RATE_LIMIT, LLMDep
 from app.models.imports import ImportParams, ImportResponse, TextImportRequest
 from app.models.ledger import AdviceRequest, AdviceResponse, LedgerSummary, SummaryRequest
 from app.services.imports import import_from_file, import_from_text
 from app.services.ledger import compute_summary, generate_advice
-from app.services.uploads import IMPORT_TYPES, MAX_IMPORT_BYTES, validate_upload
+from app.services.uploads import IMPORT_TYPES, MAX_IMPORT_BYTES, receive_upload
 
 router = APIRouter(prefix="/api/ledger", tags=["ledger"])
 
@@ -32,14 +32,14 @@ async def advice(payload: AdviceRequest, llm: LLMDep) -> AdviceResponse:
     return AdviceResponse(tips=tips, summary=result)
 
 
-@router.post("/import/file", dependencies=AI_RATE_LIMIT)
+@router.post("/import/file", dependencies=AI_HEAVY_RATE_LIMIT)
 async def import_file(request: Request, params: Annotated[ImportParams, Query()], llm: LLMDep) -> ImportResponse:
     """Read transactions from a screenshot or PDF sent as the raw request body (kept in memory only)."""
-    upload = validate_upload(request.headers.get("content-type"), await request.body(), IMPORT_TYPES, MAX_IMPORT_BYTES)
+    upload = await receive_upload(request, IMPORT_TYPES, MAX_IMPORT_BYTES)
     return await import_from_file(llm, upload, params.today, params.language)
 
 
-@router.post("/import/text", dependencies=AI_RATE_LIMIT)
+@router.post("/import/text", dependencies=AI_HEAVY_RATE_LIMIT)
 async def import_text(payload: TextImportRequest, llm: LLMDep) -> ImportResponse:
     """Read transactions from pasted SMS or statement text."""
     return await import_from_text(llm, payload.text, payload.today, payload.language)

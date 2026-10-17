@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from app.llm.client import LLMClient, ai_empty
 from app.llm.prompts import SPECS, safety_chat_request
 from app.models.safety import SafetyChatRequest, SafetyChatResponse, SafetyModelOutput
-from app.security import cap_text, strip_phone_numbers
+from app.security import safe_ai_text
 
 
 @dataclass(frozen=True)
@@ -30,7 +30,7 @@ async def safety_reply(llm: LLMClient, payload: SafetyChatRequest) -> SafetyChat
     """Answer a safety question and decide whether to offer a complaint draft."""
     request = safety_chat_request(payload.message, payload.history, payload.language, payload.work_types)
     output = await llm.generate_json(request, SafetyModelOutput)
-    reply = cap_text(strip_phone_numbers(output.reply), SPECS["safety_chat"].max_chars)
+    reply = safe_ai_text(output.reply, SPECS["safety_chat"].max_chars, strip_phones=True)
     if not reply:
         raise ai_empty()
     suggest = output.suggest_complaint and output.issue_type is not None

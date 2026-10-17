@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from fastapi import Request
+
 from app.errors import AppError
 
 # Vercel Functions reject request bodies above ~4.5 MB, so no upload may exceed 4 MiB.
@@ -69,6 +71,37 @@ def base_mime(content_type: str | None) -> str:
     return (content_type or "").split(";", 1)[0].strip().lower()
 
 
+def require_type(content_type: str | None, allowed: frozenset[str], type_error: str) -> str:
+    """Reject an unexpected declared type with 415 before any of the body is read."""
+    mime = base_mime(content_type)
+    if mime not in allowed:
+        raise AppError(type_error, "This file type is not supported.", 415)
+    return mime
+
+
+async def read_capped(request: Request, max_bytes: int) -> bytes:
+    """Read the raw body into one buffer, stopping as soon as it exceeds ``max_bytes`` (413).
+    The middleware enforces the same cap; this keeps the endpoint safe on its own."""
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > max_bytes:
+        raise AppError("payload_too_large", "The file is too large.", 413)
+    buffer = bytearray()
+    async for chunk in request.stream():
+        buffer += chunk
+        if len(buffer) > max_bytes:
+            raise AppError("payload_too_large", "The file is too large.", 413)
+    return bytes(buffer)
+
+
+async def receive_upload(
+    request: Request, allowed: frozenset[str], max_bytes: int, type_error: str = "unsupported_file_type"
+) -> ValidUpload:
+    """Type check, capped read, then full validation (emptiness, size, magic bytes)."""
+    content_type = request.headers.get("content-type")
+    require_type(content_type, allowed, type_error)
+    return validate_upload(content_type, await read_capped(request, max_bytes), allowed, max_bytes, type_error)
+
+
 def validate_upload(
     content_type: str | None,
     data: bytes,
@@ -77,9 +110,7 @@ def validate_upload(
     type_error: str = "unsupported_file_type",
 ) -> ValidUpload:
     """Check type (declared and actual bytes), emptiness and size. Raises 415 / 422 / 413."""
-    mime = base_mime(content_type)
-    if mime not in allowed:
-        raise AppError(type_error, "This file type is not supported.", 415)
+    mime = require_type(content_type, allowed, type_error)
     if not data:
         raise AppError("empty_file", "The file is empty.", 422)
     if len(data) > max_bytes:

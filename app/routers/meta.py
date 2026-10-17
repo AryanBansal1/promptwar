@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Request
+from fastapi.responses import Response
 
 from app.deps import StoreDep
+from app.http_cache import cached_bytes_response
 from app.models.common import Language
 
 router = APIRouter(tags=["meta"])
@@ -19,7 +21,6 @@ async def health(request: Request) -> dict[str, Any]:
 
 
 @router.get("/api/i18n/{lang}")
-async def translations(lang: Language, store: StoreDep, response: Response) -> dict[str, Any]:
-    """UI strings for one language."""
-    response.headers["Cache-Control"] = "public, max-age=3600"
-    return store.i18n[lang]
+async def translations(lang: Language, store: StoreDep, request: Request) -> Response:
+    """UI strings for one language: bytes prepared at startup, with an ETag for cheap revalidation."""
+    return cached_bytes_response(request, store.i18n_json[lang], "application/json", "public, max-age=3600")

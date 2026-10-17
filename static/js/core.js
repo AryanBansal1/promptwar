@@ -323,6 +323,12 @@ window.Saathi = (() => {
 
   const num = (value) => (value === "" || value === undefined || value === null ? 0 : Number(value));
 
+  /** Run fn only after `wait` ms without another call (e.g. saving drafts while typing). */
+  function debounce(fn, wait = 300) {
+    let timer = null;
+    return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), wait); };
+  }
+
   // ---------- Router & cross-feature prefill ----------
   let currentView = "home";
   let booted = false; // move focus to the view heading only on navigation, not on first load
@@ -389,7 +395,7 @@ window.Saathi = (() => {
     t, lookup, lang: () => lang, onLanguageChange: (fn) => languageListeners.push(fn), fillSelect,
     api, apiUpload, errorText, showLoading, showError, aiBlock, withBusy, runAi,
     todayISO, newId, downloadFile, copyText, money: (v) => moneyFormat.format(v), amountTag, netTag,
-    formValues, setFormValues, validate, num,
+    formValues, setFormValues, validate, num, debounce,
     goTo, takePrefill, onEnter, renderers, rerender: rerenderCurrentView,
     register: (init) => inits.push(init), boot,
   });

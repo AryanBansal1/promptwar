@@ -6,7 +6,7 @@ from app.llm.client import LLMClient, ai_empty
 from app.llm.prompts import SPECS, grievance_request
 from app.models.common import ISSUE_NAMES, PLATFORM_NAMES, Language, Platform
 from app.models.grievance import EscalationContact, GrievanceDraft, GrievanceRequest, GrievanceResponse
-from app.security import cap_text
+from app.security import safe_ai_text
 from app.services.ai import cap_items
 from app.services.data_store import EscalationData
 
@@ -66,8 +66,8 @@ async def draft_grievance(llm: LLMClient, payload: GrievanceRequest, escalation:
     request = grievance_request(grievance_facts(payload), _user_text(payload), payload.language)
     draft = await llm.generate_json(request, GrievanceDraft)
     max_chars = SPECS["grievance_draft"].max_chars
-    letter_english = cap_text(draft.letter_english, max_chars)
-    letter_local = None if payload.language is Language.EN else cap_text(draft.letter_local, max_chars)
+    letter_english = safe_ai_text(draft.letter_english, max_chars)
+    letter_local = None if payload.language is Language.EN else safe_ai_text(draft.letter_local, max_chars)
     if not letter_english or (letter_local is not None and not letter_local):
         raise ai_empty()
     return GrievanceResponse(

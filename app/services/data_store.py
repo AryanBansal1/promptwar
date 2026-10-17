@@ -74,6 +74,7 @@ class DataStore:
     goals: dict[str, Goal]
     escalation: EscalationData
     i18n: dict[Language, dict[str, Any]]
+    i18n_json: dict[Language, bytes]  # pre-serialised once, served as-is
 
 
 def _read(data_dir: Path, name: str) -> Any:
@@ -96,6 +97,7 @@ def load_data_store(data_dir: Path = DATA_DIR) -> DataStore:
         goals={g.id: g for g in goals},
         escalation=escalation,
         i18n=i18n,
+        i18n_json={lang: json.dumps(d, ensure_ascii=False, separators=(",", ":")).encode() for lang, d in i18n.items()},
     )
     _check_references(store)
     return store

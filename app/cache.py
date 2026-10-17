@@ -1,11 +1,13 @@
-"""A small in-memory LRU cache with TTL, used only for deterministic-input AI calls."""
+"""A small in-memory LRU cache with TTL, used only for deterministic-input AI calls.
+
+On serverless platforms each warm instance keeps its own copy; it is lost on a cold start.
+"""
 
 from __future__ import annotations
 
-import hashlib
-import json
 import time
 from collections import OrderedDict
+from collections.abc import Hashable
 from typing import Generic, TypeVar
 
 T = TypeVar("T")
@@ -22,9 +24,9 @@ class TTLCache(Generic[T]):
     def __init__(self, max_size: int, ttl_seconds: float) -> None:
         self.max_size = max_size
         self.ttl = ttl_seconds
-        self._items: OrderedDict[str, tuple[float, T]] = OrderedDict()
+        self._items: OrderedDict[Hashable, tuple[float, T]] = OrderedDict()
 
-    def get(self, key: str, now: float | None = None) -> T | None:
+    def get(self, key: Hashable, now: float | None = None) -> T | None:
         """Return the cached value or ``None`` if missing/expired."""
         now = time.monotonic() if now is None else now
         item = self._items.get(key)
@@ -37,7 +39,7 @@ class TTLCache(Generic[T]):
         self._items.move_to_end(key)
         return value
 
-    def set(self, key: str, value: T, now: float | None = None) -> None:
+    def set(self, key: Hashable, value: T, now: float | None = None) -> None:
         """Store a value, evicting the least recently used entry when full."""
         if self.max_size <= 0:
             return
@@ -49,9 +51,3 @@ class TTLCache(Generic[T]):
 
     def __len__(self) -> int:
         return len(self._items)
-
-
-def cache_key(*parts: object) -> str:
-    """Stable hash of JSON-serialisable parts."""
-    raw = json.dumps(parts, sort_keys=True, ensure_ascii=False, default=str)
-    return hashlib.sha256(raw.encode()).hexdigest()

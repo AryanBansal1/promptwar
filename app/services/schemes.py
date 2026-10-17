@@ -59,4 +59,5 @@ def scheme_records(matches: list[SchemeMatch]) -> list[dict[str, object]]:
 async def explain_schemes(llm: LLMClient, matches: list[SchemeMatch], language: Language, cache: TTLCache[str]) -> str:
     """Explain matched schemes, grounded only on their records. Cached by scheme set + language."""
     request = schemes_explain_request(scheme_records(matches), language)
-    return await generate_capped_text(llm, "schemes_explain", request, cache)
+    key = (language.value, *sorted((m.scheme.id, m.reason) for m in matches))
+    return await generate_capped_text(llm, "schemes_explain", request, cache, cache_key=key)

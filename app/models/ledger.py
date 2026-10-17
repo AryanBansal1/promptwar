@@ -72,7 +72,7 @@ class LedgerEntry(StrictModel):
     @model_validator(mode="after")
     def _consistent(self) -> LedgerEntry:
         if self.category not in categories_for(self.kind):
-            raise ValueError(f"category '{self.category}' is not valid for {self.kind}")
+            raise ValueError("category does not match the entry type")  # no user values echoed back
         if self.kind is EntryKind.EXPENSE and self.hours:
             raise ValueError("hours are only recorded on income entries")
         return self

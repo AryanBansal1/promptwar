@@ -13,3 +13,5 @@ htmlcov/
 tests/
 *.md
 Makefile
+scripts/
+demo_output/

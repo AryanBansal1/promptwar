@@ -28,8 +28,7 @@ async def match(payload: EligibilityProfile, store: StoreDep) -> MatchResponse:
 @router.post("/explain", dependencies=AI_RATE_LIMIT)
 async def explain(payload: ExplainRequest, store: StoreDep, llm: LLMDep, cache: CacheDep) -> ExplainResponse:
     """Re-run matching server-side, then let Gemini explain only the matched records."""
-    profile = EligibilityProfile.model_validate(payload.model_dump(exclude={"language"}))
-    matches, _ = match_schemes(store.schemes, profile)
+    matches, _ = match_schemes(store.schemes, payload)  # ExplainRequest is an EligibilityProfile
     if not matches:
         raise AppError("no_matches", "No schemes matched, so there is nothing to explain.", 404)
     text = await explain_schemes(llm, matches, payload.language, cache)

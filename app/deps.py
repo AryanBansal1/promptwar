@@ -33,4 +33,6 @@ def get_ai_cache(request: Request) -> TTLCache[str]:
 LLMDep = Annotated[LLMClient, Depends(get_llm_client)]
 StoreDep = Annotated[DataStore, Depends(get_data_store)]
 CacheDep = Annotated[TTLCache[str], Depends(get_ai_cache)]
-AI_RATE_LIMIT = [Depends(ai_rate_limit)]
+# Rate-limit cost units: reading an image/PDF or audio is ~3x a text call.
+AI_RATE_LIMIT = [Depends(ai_rate_limit(1))]
+AI_HEAVY_RATE_LIMIT = [Depends(ai_rate_limit(3))]

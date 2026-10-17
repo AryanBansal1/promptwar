@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from google.genai import errors as genai_errors
 from pydantic import BaseModel
 
-from app.cache import TTLCache, cache_key
+from app.cache import TTLCache
 from app.config import ConfigError
 from app.llm.client import GeminiClient, LLMError, LLMRequest, UnconfiguredLLMClient, build_llm_client
 from app.main import create_app, ensure_production_safe
@@ -325,7 +325,10 @@ def test_ttl_cache_lru_and_expiry() -> None:
     disabled: TTLCache[str] = TTLCache(max_size=0, ttl_seconds=10)
     disabled.set("x", "y")
     assert disabled.get("x") is None
-    assert cache_key("a", {"b": 1}) == cache_key("a", {"b": 1}) != cache_key("a", {"b": 2})
+    tuple_keys: TTLCache[str] = TTLCache(max_size=4, ttl_seconds=10)
+    tuple_keys.set(("schemes", "hi", ("pmsby", "note")), "x")
+    assert tuple_keys.get(("schemes", "hi", ("pmsby", "note"))) == "x"
+    assert tuple_keys.get(("schemes", "pa", ("pmsby", "note"))) is None
 
 
 def test_index_and_static_caching(client: TestClient) -> None:

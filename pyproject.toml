@@ -16,9 +16,11 @@ dependencies = [
 [tool.vercel]
 entrypoint = "app.main:app"
 
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+# --tb=short: tracebacks never print argument values (e.g. os.environ), so secrets cannot leak into logs.
+addopts = "-q --tb=short"
 filterwarnings = ["ignore::DeprecationWarning"]
 
 [tool.coverage.run]

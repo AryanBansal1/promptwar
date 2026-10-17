@@ -26,7 +26,7 @@ from app.models.ask import (
 from app.models.common import Platform, today_ist
 from app.models.imports import LOW_CONFIDENCE
 from app.models.ledger import Category, EntryKind, categories_for
-from app.security import cap_text, clean_text, strip_phone_numbers
+from app.security import cap_text, clean_text, safe_ai_text
 
 ROUTES: dict[Intent, str] = {
     Intent.LEDGER: "#/ledger",
@@ -111,7 +111,7 @@ async def route_question(llm: LLMClient, payload: AskRequest) -> AskResponse:
     """Classify the message and return the route, a short answer, prefill and any proposed entries."""
     request = intent_request(payload.message, payload.language, payload.work_types)
     output = await llm.generate_json(request, IntentOutput)
-    answer = cap_text(strip_phone_numbers(output.answer), SPECS["intent"].max_chars)
+    answer = safe_ai_text(output.answer, SPECS["intent"].max_chars, strip_phones=True)
     if not answer:
         raise ai_empty()
     transactions: list[ProposedTransaction] = []

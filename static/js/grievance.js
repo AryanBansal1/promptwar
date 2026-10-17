@@ -74,7 +74,7 @@
   function init() {
     const form = $("#grievance-form");
     const result = $("#grievance-result");
-    form.addEventListener("input", () => S.session.set(FORM_KEY, S.formValues(form)));
+    form.addEventListener("input", S.debounce(() => S.session.set(FORM_KEY, S.formValues(form))));
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       const ok = S.validate(form, () => {

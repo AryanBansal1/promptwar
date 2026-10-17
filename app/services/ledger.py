@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Callable, Hashable, Iterable
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
-from typing import TypeVar
 
 from app.llm.client import LLMClient
 from app.llm.prompts import WEEKDAYS, advice_request
-from app.models.common import PLATFORM_NAMES, WORK_TYPE_NAMES, Language, Platform
+from app.models.common import PLATFORM_NAMES, WORK_TYPE_NAMES, Language, Platform, WorkType
 from app.models.ledger import (
     AdviceTips,
     Category,
@@ -26,7 +25,6 @@ from app.services.ai import cap_items
 
 _CENT = Decimal("0.01")
 _ZERO = Decimal("0")
-KeyT = TypeVar("KeyT", bound=Hashable)
 
 
 def _d(value: float) -> Decimal:
@@ -54,13 +52,13 @@ class _Bucket:
     def net(self) -> Decimal:
         return self.income - self.expenses
 
-    def add(self, entry: LedgerEntry) -> None:
-        if entry.kind is EntryKind.INCOME:
-            self.income += _d(entry.amount)
-            self.hours += _d(entry.hours)
-            self.work_days.add(entry.date)
+    def add(self, income: bool, amount: Decimal, hours: Decimal, day: date) -> None:
+        if income:
+            self.income += amount
+            self.hours += hours
+            self.work_days.add(day)
         else:
-            self.expenses += _d(entry.amount)
+            self.expenses += amount
 
     def totals(self) -> dict[str, float]:
         return {
@@ -82,11 +80,41 @@ def month_key(day: date) -> str:
     return f"{day.year}-{day.month:02d}"
 
 
-def _group(entries: Iterable[LedgerEntry], key: Callable[[LedgerEntry], KeyT]) -> dict[KeyT, _Bucket]:
-    buckets: dict[KeyT, _Bucket] = defaultdict(_Bucket)
-    for entry in entries:
-        buckets[key(entry)].add(entry)
-    return buckets
+@dataclass
+class _Totals:
+    """Every aggregate the summary needs, filled in a single pass over the entries."""
+
+    total: _Bucket = field(default_factory=_Bucket)
+    days: defaultdict[date, _Bucket] = field(default_factory=lambda: defaultdict(_Bucket))
+    weeks: defaultdict[str, _Bucket] = field(default_factory=lambda: defaultdict(_Bucket))
+    months: defaultdict[str, _Bucket] = field(default_factory=lambda: defaultdict(_Bucket))
+    platforms: defaultdict[Platform | None, _Bucket] = field(default_factory=lambda: defaultdict(_Bucket))
+    work_types: defaultdict[WorkType | None, _Bucket] = field(default_factory=lambda: defaultdict(_Bucket))
+    categories: dict[EntryKind, defaultdict[Category, Decimal]] = field(
+        default_factory=lambda: {k: defaultdict(lambda: _ZERO) for k in EntryKind}
+    )
+    income_count: int = 0
+
+    @classmethod
+    def of(cls, entries: Iterable[LedgerEntry]) -> _Totals:
+        acc = cls()
+        week_of: dict[date, str] = {}  # many entries share a date: compute its labels once
+        for entry in entries:
+            income = entry.kind is EntryKind.INCOME
+            amount, hours, day = _d(entry.amount), _d(entry.hours), entry.date
+            week = week_of.get(day) or week_of.setdefault(day, week_key(day))
+            for bucket in (
+                acc.total,
+                acc.days[day],
+                acc.weeks[week],
+                acc.months[month_key(day)],
+                acc.platforms[entry.platform],
+                acc.work_types[entry.work_type],
+            ):
+                bucket.add(income, amount, hours, day)
+            acc.categories[entry.kind][entry.category] += amount
+            acc.income_count += income
+        return acc
 
 
 def _periods(buckets: dict[str, _Bucket]) -> list[PeriodTotal]:
@@ -106,9 +134,8 @@ def _best_platform(stats: dict[Platform | None, _Bucket]) -> Platform | None:
     return max(earning, key=lambda p: (earning[p].net, p.value))
 
 
-def _best_weekday(entries: Iterable[LedgerEntry]) -> int | None:
+def _best_weekday(days: dict[date, _Bucket]) -> int | None:
     """Weekday (0=Monday) with the highest average net per day that had income."""
-    days = _group(entries, lambda e: e.date)
     nets_by_weekday: dict[int, list[Decimal]] = defaultdict(list)
     for day, bucket in days.items():
         if bucket.income > 0:
@@ -119,47 +146,44 @@ def _best_weekday(entries: Iterable[LedgerEntry]) -> int | None:
     return max(averages, key=lambda wd: (averages[wd], -wd))
 
 
-def _by_category(entries: Iterable[LedgerEntry], kind: EntryKind) -> dict[Category, float]:
-    totals: dict[Category, Decimal] = defaultdict(lambda: _ZERO)
-    for entry in entries:
-        if entry.kind is kind:
-            totals[entry.category] += _d(entry.amount)
+def _by_category(totals: dict[Category, Decimal]) -> dict[Category, float]:
     return {c: money(v) for c, v in sorted(totals.items(), key=lambda kv: kv[1], reverse=True)}
 
 
-def compute_summary(entries: list[LedgerEntry], today: date | None = None) -> LedgerSummary:
-    """Totals, per-hour rates, weekly/monthly groups, platform and work-type breakdowns."""
-    total = _Bucket()
-    for entry in entries:
-        total.add(entry)
-    platforms = _group(entries, lambda e: e.platform)
-    work_types = _group(entries, lambda e: e.work_type)
+def _day_period(day: date, bucket: _Bucket | None) -> PeriodTotal:
+    bucket = bucket or _Bucket()
+    return PeriodTotal(period=day.isoformat(), days=len(bucket.work_days), **bucket.totals())
 
+
+def compute_summary(entries: list[LedgerEntry], today: date | None = None) -> LedgerSummary:
+    """Totals, per-hour rates, weekly/monthly groups, platform and work-type breakdowns (one pass)."""
+    acc = _Totals.of(entries)
+    total = acc.total
     return LedgerSummary(
         entry_count=len(entries),
-        income_count=sum(e.kind is EntryKind.INCOME for e in entries),
-        expense_count=sum(e.kind is EntryKind.EXPENSE for e in entries),
+        income_count=acc.income_count,
+        expense_count=len(entries) - acc.income_count,
         total_income=money(total.income),
         total_expenses=money(total.expenses),
         total_net=money(total.net),
         total_hours=money(total.hours),
         net_per_hour=_per_hour(total.net, total.hours),
         days_worked=len(total.work_days),
-        income_by_category=_by_category(entries, EntryKind.INCOME),
-        expense_by_category=_by_category(entries, EntryKind.EXPENSE),
-        weekly=_periods(_group(entries, lambda e: week_key(e.date))),
-        monthly=_periods(_group(entries, lambda e: month_key(e.date))),
+        income_by_category=_by_category(acc.categories[EntryKind.INCOME]),
+        expense_by_category=_by_category(acc.categories[EntryKind.EXPENSE]),
+        weekly=_periods(acc.weeks),
+        monthly=_periods(acc.months),
         platforms=[
             PlatformStat(platform=p, net_per_hour=_per_hour(b.net, b.hours), **b.totals())
-            for p, b in sorted(platforms.items(), key=lambda kv: kv[1].net, reverse=True)
+            for p, b in sorted(acc.platforms.items(), key=lambda kv: kv[1].net, reverse=True)
         ],
         work_types=[
             WorkTypeStat(work_type=w, net_per_hour=_per_hour(b.net, b.hours), **b.totals())
-            for w, b in sorted(work_types.items(), key=lambda kv: kv[1].net, reverse=True)
+            for w, b in sorted(acc.work_types.items(), key=lambda kv: kv[1].net, reverse=True)
         ],
-        best_platform=_best_platform(platforms),
-        best_weekday=_best_weekday(entries),
-        today=day_total(entries, today) if today else None,
+        best_platform=_best_platform(acc.platforms),
+        best_weekday=_best_weekday(acc.days),
+        today=_day_period(today, acc.days.get(today)) if today else None,
     )
 
 
@@ -168,8 +192,8 @@ def day_total(entries: Iterable[LedgerEntry], day: date) -> PeriodTotal:
     bucket = _Bucket()
     for entry in entries:
         if entry.date == day:
-            bucket.add(entry)
-    return PeriodTotal(period=day.isoformat(), days=len(bucket.work_days), **bucket.totals())
+            bucket.add(entry.kind is EntryKind.INCOME, _d(entry.amount), _d(entry.hours), day)
+    return _day_period(day, bucket)
 
 
 def summary_for_prompt(summary: LedgerSummary) -> dict[str, object]:
